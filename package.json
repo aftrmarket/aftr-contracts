@@ -1,0 +1,21 @@
+{
+  "name": "aftr-contracts",
+  "version": "1.0.0",
+  "description": "AFTR smart contracts for the Arweave ecosystem",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-contract": "node ./scripts/build.js",
+    "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "arweave": "^1.10.18",
+    "esbuild": "^0.14.1",
+    "smartweave": "^0.4.46"
+  },
+  "devDependencies": {
+    "typescript": "^4.5.2"
+  }
+}

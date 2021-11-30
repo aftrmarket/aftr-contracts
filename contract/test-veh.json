@@ -1,0 +1,228 @@
+[
+{
+    "name": "Blue Horizon",
+    "ticker": "AFTR-BLUE",
+    "balances": {
+        "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+        "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1000,
+        "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA": 2000,
+        "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ": 5000,
+        "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
+    },
+    "tokens": [
+        {
+            "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+            "ticker": "VRT",
+            "source": "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg",
+            "txId" : "tx2fasdfoijeo8547",
+            "balance": 1000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg"
+        },
+        {
+            "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+            "ticker": "VRT",
+            "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+            "txId" : "tx3fasdfoijeo8547",
+            "balance": 20000,
+            "depositBlock": 646429,
+            "lockLength": 100,
+            "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg"
+        },
+        {
+            "id": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
+            "ticker": "ARDRIVE",
+            "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
+            "txId" : "tx6fasdfoijeo8547",
+            "balance": 1000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k"
+        }
+    ],
+    "status": "started",
+    "tipsAr": 100,
+    "tipsMisc": 1000,
+    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "ownership" : "single",
+    "settings": [
+        [
+            "quorum",
+            0.5
+        ],
+        [
+            "support",
+            0.5
+        ],
+        [
+            "voteLength",
+            2000
+        ],
+        [
+            "lockMinLength",
+            100
+        ],
+        [
+            "lockMaxLength",
+            10000
+        ],
+        [
+            "communityLogo",
+            "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA"
+        ]
+    ]
+}
+
+,
+
+{
+    "name": "Alquipa",
+    "ticker": "AFTR-ALQPA",
+    "balances": {
+        "Zznp65qgTIm2QBMjjoEaHKOmQrpTu0tfOcdbkm_qoL4": 50000,
+        "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 10000,
+        "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE": 25000
+    },
+    "tokens": [
+        {
+            "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+            "ticker": "VRT",
+            "source": "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE",
+            "txId" : "tx2fasdfoijeo8547",
+            "balance": 1000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg"
+        },
+        {
+            "id": "sew_MAXZIgmyEPzzOTkdAca7SQCL9XTCMfxY3KOE5-M",
+            "ticker": "DLT",
+            "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+            "txId" : "tx3fasdfoijeo8547",
+            "balance": 55000,
+            "depositBlock": 646429,
+            "lockLength": 100,
+            "logo": "lhIkxHTm6H4zMyWJVugLUt3EJsQ7zeFyKMLCMToDt3s"
+        },
+        {
+            "id": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
+            "ticker": "ARDRIVE",
+            "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
+            "txId" : "tx6fasdfoijeo8547",
+            "balance": 1000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k"
+        }
+    ],
+    "status": "stopped",
+    "tipsAr": 0,
+    "tipsMisc": 0,
+    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "ownership" : "single",
+    "settings": [
+        [
+            "quorum",
+            0.5
+        ],
+        [
+            "support",
+            0.5
+        ],
+        [
+            "voteLength",
+            2000
+        ],
+        [
+            "lockMinLength",
+            100
+        ],
+        [
+            "lockMaxLength",
+            10000
+        ],
+        [
+            "communityLogo",
+            "nZr8RcHYY2XXloKcxtgrbssBdpvz6C2ifM92QvkYkgg"
+        ]
+    ]
+}
+,
+{
+    "name": "Chillin Treasury",
+    "ticker": "AFTR-CHILL",
+    "balances": {
+        "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 10000,
+        "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA": 2000,
+        "tv7gJr5TAys7oTpbfHI8dGO7t04jmacTNo20EfB0GJo": 1050,
+        "zVNaaPGR8yL5Dp5x4Jb-XPH4hlvB7ZoAvVFquw7J58w": 100,
+        "ffOomWmOgtmJ816U_l5hsMpmEFsx5DUDxUEAcoLOy7Q": 200,
+        "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw": 588,
+        "h-Bgr13OWUOkRGWrnMT0LuUKfJhRss5pfTdxHmNcXyw": 9970
+    },
+    "tokens": [
+        {
+            "id": "6eTVr8IKPNYbMHVcpHFXr-XNaL5hT6zRJXimcP-owmo",
+            "ticker": "OPENBITS",
+            "source": "UN8VLHqRGenuL3SCtbhHlJ_2ImgFVPIObyL921Wf6mo",
+            "txId" : "tx2fasdfoijeo8547",
+            "balance": 30000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "4lU64igaeoMKC9RgLELKr7bXxnS9V3YZzqxN1UDMAYU"
+        },
+        {
+            "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+            "ticker": "VRT",
+            "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+            "txId" : "tx3fasdfoijeo8547",
+            "balance": 15000,
+            "depositBlock": 646429,
+            "lockLength": 100,
+            "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg"
+        },
+        {
+            "id": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
+            "ticker": "ARDRIVE",
+            "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
+            "txId" : "tx6fasdfoijeo8547",
+            "balance": 20000,
+            "depositBlock": 646429,
+            "lockLength": 10,
+            "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k"
+        }
+    ],
+    "status": "started",
+    "tipsAr": 235,
+    "tipsMisc": 2549,
+    "creator" : "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw",
+    "ownership" : "single",
+    "settings": [
+        [
+            "quorum",
+            0.5
+        ],
+        [
+            "support",
+            0.5
+        ],
+        [
+            "voteLength",
+            2000
+        ],
+        [
+            "lockMinLength",
+            100
+        ],
+        [
+            "lockMaxLength",
+            10000
+        ],
+        [
+            "communityLogo",
+            "aM7YfRnd97mTGLn_3vjLfWp2TgtBKRyDsBnlDhA1e-s"
+        ]
+    ]
+}
+]

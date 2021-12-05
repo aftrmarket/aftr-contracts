@@ -4,6 +4,13 @@ import path from 'path';
 import fs from 'fs';
 import { SmartWeaveNodeFactory, LoggerFactory } from 'redstone-smartweave';
 
+/***
+ * This test script assumes an instance of Arweave is running
+ * The script loads several contracts and initial states to the Arweave node
+ * and then loads the base AFTR contract and state.
+ * Once loaded, then tests can be run to test the AFTR contract and/or
+ * utitilze the AFTR source to create new AFTR vehicles from the AFTR.Market website.
+ ***/
 
 const arweave = Arweave.init({
     host: process.env.ARWEAVE_HOST,
@@ -45,6 +52,11 @@ async function arLocalInit() {
     console.log("Verto Contract Source: " + contractTxId);
 
     // Create AFTR Protocol base contract
+    contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
+    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");
+    contractTxId = await createContract(wallet, contractSource, initState, 'AFTR');
+    await mine();
+    console.log("AFTR Contract Source: " + contractTxId);
     
     balance = await arweave.wallets.getBalance(addr);
     console.log("BALANCE: " + balance);
@@ -57,7 +69,7 @@ async function createContract(wallet, contractSource, initState, pst) {
         { name: 'Content-Type', value: 'application/javascript' }
     ];
 
-    if (pst.substr(0, 5) === 'AFTR-') {
+    if (pst.substr(0, 4) === 'AFTR') {
         swTags.push(
             { name: 'Protocol', value:  process.env.SMARTWEAVE_TAG_PROTOCOL }
         );

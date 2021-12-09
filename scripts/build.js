@@ -5,7 +5,7 @@ const fs = require("fs");
   const contractEntries = fs
     .readdirSync("./contract", { withFileTypes: true })
     .filter((el) => el.isDirectory())
-    .map((el) => `${el.name}/contract-tests.ts`);
+    .map((el) => `${el.name}/contract.ts`);
 
   await build({
     entryPoints: contractEntries.map((entry) => `./contract/${entry}`),

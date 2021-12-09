@@ -3,19 +3,26 @@
   "version": "1.0.0",
   "description": "AFTR smart contracts for the Arweave ecosystem",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node -r dotenv/config test.js",
     "build-contract": "node ./scripts/build.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "arlocal": "^1.1.13",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
+    "esm": "^3.2.25",
+    "if-env": "^1.0.4",
+    "redstone-smartweave": "^0.3.10-alpha.19",
     "smartweave": "^0.4.46"
   },
   "devDependencies": {
+    "dotenv": "^10.0.0",
+    "supertest": "^6.1.6",
     "typescript": "^4.5.2"
   }
 }

@@ -97,8 +97,7 @@ const balAction = {
     input: { 
         function: 'balance',
         target: 'abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8'
-    },
-    caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+    }
 };
 ```
 
@@ -112,8 +111,7 @@ const txAction = {
         function: 'transfer',
         target: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I',
         qty: 300
-    },
-    caller: 'abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8'
+    }
 };
 ```
 
@@ -131,8 +129,7 @@ const depAction = {
         start: 123,
         tokenId: 'T-SQUID',
         qty: 10000
-    },
-    caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+    }
 };
 ```
 
@@ -157,8 +154,7 @@ const proposeVoteAction = {
         type: 'set',
         key: 'settings.quorum',
         value: .01
-    },
-    caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+    }
 };
 ```
 
@@ -172,8 +168,7 @@ const voteCastAction = {
         function: 'vote',
         voteId: '130tx12033012',    // ID for the vote being cast
         cast: 'yay'
-    },
-    caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+    }
 };
 ```
 
@@ -194,8 +189,7 @@ const actions = [
             type: 'set',
             key: 'name',
             value: 'Alquip'
-        },
-        caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+        }
     },
     {
         input: {
@@ -203,8 +197,7 @@ const actions = [
             type: 'set',
             key: 'ticker',
             value: 'AFTR-ALQP'
-        },
-        caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+        }
     },
     {
         input: {
@@ -212,8 +205,7 @@ const actions = [
             type: 'set',
             key: 'status',
             value: 'started'
-        },
-        caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+        }
     },
     {
         input: {
@@ -221,8 +213,7 @@ const actions = [
             type: 'set',
             key: 'votingSystem',
             value: 'equal'
-        },
-        caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+        }
     },
     {
         input: {
@@ -230,15 +221,13 @@ const actions = [
             type: 'set',
             key: 'settings.voteLength', // Note how to propose changes to the settings Map
             value: 200
-        },
-        caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
+        }
     },
-]
-const input: {
+];
+
+const input =  {
     function: 'multiInteraction',
     type: 'set',
     actions: actions
-},
-    caller: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I'
-}
+};
 ```

@@ -231,3 +231,6 @@ const input =  {
     actions: actions
 };
 ```
+
+## Testing
+See the [Testing Documentation](https://github.com/aftrmarket/aftr-contracts/tree/main/tests) to setup a local testing environment using Arlocal.

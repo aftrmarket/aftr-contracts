@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node -r dotenv/config test.js",
+    "test": "node -r dotenv/config ./tests/test.js",
     "build-contract": "node ./scripts/build.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js"
   },

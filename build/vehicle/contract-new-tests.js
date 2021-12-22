@@ -1,5 +1,5 @@
 // contract/vehicle/contract.ts
-var mode = "PROD";
+var mode = "TEST";
 function ThrowError(msg) {
   if (mode === "TEST") {
     throw "ERROR: " + msg;
@@ -407,3 +407,107 @@ function updateSetting(vehicle, key, value) {
     vehicle.settings.push([key, value]);
   }
 }
+
+// contract/vehicle/contract-new-tests.ts
+function testPropose() {
+  const action = {
+    "input": {
+      "function": "propose",
+      "type": "set",
+      "key": "ownership",
+      "value": "dao",
+      "recipient": "",
+      "target": "",
+      "qty": 0,
+      "note": ""
+    },
+    caller: "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I"
+  };
+  const state = {
+    "name": "Blue Horizon",
+    "ticker": "AFTR-BLUE",
+    "balances": {
+      "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1e3,
+      "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2e3,
+      "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ": 5e3,
+      "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 1e4
+    },
+    "vault": {},
+    "votes": [],
+    "tokens": [
+      {
+        "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+        "ticker": "VRT",
+        "source": "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg",
+        "txId": "tx2fasdfoijeo8547",
+        "balance": 1e3,
+        "depositBlock": 646429,
+        "lockLength": 10,
+        "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
+        "name": "Verto",
+        "total": 20
+      },
+      {
+        "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+        "ticker": "VRT",
+        "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+        "txId": "tx3fasdfoijeo8547",
+        "balance": 2e4,
+        "depositBlock": 646429,
+        "lockLength": 100,
+        "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
+        "name": "Verto",
+        "total": 400
+      },
+      {
+        "id": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
+        "ticker": "ARDRIVE",
+        "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
+        "txId": "tx6fasdfoijeo8547",
+        "balance": 1e3,
+        "depositBlock": 646429,
+        "lockLength": 10,
+        "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k",
+        "name": "ArDrive",
+        "total": 333.3333333333333
+      }
+    ],
+    "status": "started",
+    "tipsAr": 100,
+    "tipsMisc": 1e3,
+    "creator": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "ownership": "single",
+    "settings": [
+      [
+        "quorum",
+        0.5
+      ],
+      [
+        "voteLength",
+        2e3
+      ],
+      [
+        "lockMinLength",
+        100
+      ],
+      [
+        "lockMaxLength",
+        1e4
+      ],
+      [
+        "communityLogo",
+        "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA"
+      ]
+    ],
+    "treasury": 753.3333333333333
+  };
+  try {
+    const res = handle(state, action);
+    console.log(res);
+    console.log(JSON.stringify(res));
+  } catch (err) {
+    console.log(err);
+  }
+}
+testPropose();

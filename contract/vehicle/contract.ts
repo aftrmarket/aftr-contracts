@@ -1,5 +1,3 @@
-import { smartweave } from "smartweave";
-import { collapseTextChangeRangesAcrossMultipleVersions, forEachChild, textChangeRangeIsUnchanged } from "typescript";
 import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface } from "./faces";
 
 const mode = 'PROD';    // If TEST, SmartWeave not used & messages print to console.
@@ -62,9 +60,12 @@ export async function handle(state: StateInterface, action: ActionInterface) {
      * voteLength has passed OR single ownership vehicle (no voteLength required)
      * AND status of vote == 'active'
     ***/
-    const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));
-    if (concludedVotes.length > 0) {
-        finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));
+
+    if (Array.isArray(votes)) {
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));
+        if (concludedVotes.length > 0) {
+            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));
+        }
     }
 
     if (multiIteration <= 1) {
@@ -406,10 +407,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         if (!state.tokens) {
             // tokens array is not in vehicle
-            // @ts-expect-error
             state['tokens'] = [];
         }
-
+        
+        //@ts-expect-error
         state.tokens.push(txObj);
 
         return { state };
@@ -486,8 +487,10 @@ function scanVault(vehicle, block) {
 
 function returnLoanedTokens(vehicle, block) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
-    const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength >= block));
-    unlockedTokens.forEach(token => processWithdrawal(vehicle, token));
+    if (Array.isArray(vehicle.tokens)) {
+        const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength >= block));
+        unlockedTokens.forEach(token => processWithdrawal(vehicle, token));
+    }
 }
 
 function getStateProperty(key: string) {
@@ -517,7 +520,9 @@ function processWithdrawal(vehicle, tokenObj) {
 
 
     // Update state by finding txId if Withdrawal was successful
-    vehicle.tokens = vehicle.tokens.filter(token => token.txId !== tokenObj.txId);
+    if (Array.isArray(vehicle.tokens)) {
+        vehicle.tokens = vehicle.tokens.filter(token => token.txId !== tokenObj.txId);
+    }
 }
 
 function finalizeVotes(vehicle, concludedVotes, quorum, support) {

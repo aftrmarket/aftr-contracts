@@ -42,6 +42,8 @@
             "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k"
         }
     ],
+    "vault": {},
+    "votes": [],
     "status": "started",
     "tipsAr": 235,
     "tipsMisc": 2549,
@@ -73,5 +75,6 @@
             "communityLogo",
             "aM7YfRnd97mTGLn_3vjLfWp2TgtBKRyDsBnlDhA1e-s"
         ]
-    ]
+    ],
+    "treasury": 0.00
 }

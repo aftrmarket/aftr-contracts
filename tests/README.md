@@ -20,7 +20,7 @@ Now you're ready to run the test script.
 
 ```
 // Load the data to your local Arlocal instance
-npm run test
+npm run init
 ```
 
 Note that if you stop the Arlocal instance and start it again without the persist option, all the loaded test data will be erased. If you do that by mistake, simply run the test script again.

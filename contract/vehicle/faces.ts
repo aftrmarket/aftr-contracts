@@ -10,20 +10,23 @@ export interface StateInterface {
     pricePerSeat?: number,                           // Price per seat is customizable
     minLength?: number,                              // Minimum amount of blocks required to lease a seat
     maxLength?: number,                              // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
-    ownership: 'single' | 'dao',
+    ownership: string,
     votingSystem?: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
+    tipsAr?: number,
+    tipsMisc?: number,
+    treasury?: number,
     vault: {
         [key: string]: [{
             balance: number, // Positive integer
             end: number, // At what block the lock ends.
             start: number // At what block the lock starts.
         }]
-    },
-    votes: VoteInterface[],
+    }  | {},
+    votes: VoteInterface[]  | [],
     tokens?: [
         TokenInterface,
-    ],
+    ] | [],
     leases?: {
         [lessee: string]: [                           // lessee wallet address
             {

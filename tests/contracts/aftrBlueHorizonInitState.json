@@ -8,6 +8,8 @@
         "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ": 5000,
         "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
     },
+    "vault" : {},
+    "votes" : [],
     "tokens": [
         {
             "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
@@ -73,6 +75,5 @@
             "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA"
         ]
     ],
-    "logo": "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA",
     "treasury": 753.3333333333333
 }

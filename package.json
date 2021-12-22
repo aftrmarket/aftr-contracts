@@ -5,9 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node -r dotenv/config ./tests/test.js",
+    "init": "node -r dotenv/config ./tests/init.js",
+    "test": "node -r dotenv/config ./tests/test-input.js",
     "build-contract": "node ./scripts/build.js",
-    "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js"
+    "build-contract-tests": "node ./scripts/build-tests.js",
+    "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
+    "tests": "node ./build/vehicle/contract-new-tests.js"
   },
   "author": "",
   "license": "MIT",

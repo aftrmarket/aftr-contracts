@@ -44,6 +44,8 @@
             "total": 333.3333333333333
         }
     ],
+    "vault": {},
+    "votes": [],
     "status": "stopped",
     "tipsAr": 0,
     "tipsMisc": 0,
@@ -71,6 +73,5 @@
             "nZr8RcHYY2XXloKcxtgrbssBdpvz6C2ifM92QvkYkgg"
         ]
     ],
-    "logo": "nZr8RcHYY2XXloKcxtgrbssBdpvz6C2ifM92QvkYkgg",
     "treasury": 536.6666666666666
 }

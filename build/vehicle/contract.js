@@ -138,7 +138,7 @@ async function handle(state, action) {
     }
     let voteId = String(block) + "txTEST";
     if (mode !== "TEST") {
-      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id;
+      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
     }
     let vote = {
       status: "active",

@@ -1,3 +1,5 @@
+import { json } from "stream/consumers";
+import { parseJsonText } from "typescript";
 import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface } from "./faces";
 
 const mode = 'PROD';    // If TEST, SmartWeave not used & messages print to console.
@@ -31,6 +33,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     const caller = action.caller;
     const settings: Map<string, any> = new Map(state.settings);
     const votes: VoteInterface[] = state.votes;
+    let target = '';
+    let balance = 0;
 
     /*** MULTI-INTERACTION */
     /*** Multi-interactions allows for multiple contract interactions in a single transaction */
@@ -53,51 +57,20 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     } else {
         block = +SmartWeave.block.height;
     }
-    
-    // Find concluded votes in order to finalize
-    /***
-     * Look for
-     * voteLength has passed OR single ownership vehicle (no voteLength required)
-     * AND status of vote == 'active'
-    ***/
-
-    if (Array.isArray(votes)) {
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));
-        if (concludedVotes.length > 0) {
-            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));
-        }
-    }
-
-    if (multiIteration <= 1) {
-        // Only handle tips one time
-        // Handle tips to vehicle balance holders
-        /**** TODO */
-
-
-        // Unlock tokens in vault
-        if (state.vault) {
-            scanVault(state, block);
-        }
-
-        // Check for any expired loaned tokens
-        if (state.tokens) {
-            returnLoanedTokens(state, block);
-        }
-    }
 
     if (input.function === "balance") {
         // View balance
 
-        const target = isArweaveAddress(input.target || caller);
+        target = isArweaveAddress(input.target || caller);
 
         if (typeof target !== "string") {
             ThrowError("Must specificy target to get balance for.");
         }
-        let balance = 0;
+        balance = 0;
         if (target in balances) {
             balance = balances[target];
         }
-        return { result: { target, balance } };
+        //return { result: { target, balance } };
     }
 
     /*** FUNCTIONALITY NOT YET IMPLEMENTED
@@ -282,7 +255,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         votes.push(vote);
 
-        return { state };
+        //return { state };
     }
 
     if (input.function === "vote") {
@@ -328,7 +301,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         vote.voted.push(caller);
-        return { state };
+        //return { state };
     }
     /******* END VOTING FUNCTIONS */
 
@@ -359,7 +332,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         } else {
             balances[targetAddress] = qty;
         }
-        return { state };
+        //return { state };
 
     }
 
@@ -413,7 +386,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         //@ts-expect-error
         state.tokens.push(txObj);
 
-        return { state };
+        //return { state };
     }
 
     if (input.function === 'multiInteraction') {
@@ -443,12 +416,53 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 ThrowError("Nested Multi-interactions are not allowed.");
             }
 
+            // Add the caller to the action
+            nextAction.caller = caller;
+
             let result = await handle(state, nextAction);
             iteration++;
         }
 
+        //return { state };
+    }
+
+    // Find concluded votes in order to finalize
+    /***
+     * Look for
+     * voteLength has passed OR single ownership vehicle (no voteLength required)
+     * AND status of vote == 'active'
+    ***/
+
+     if (Array.isArray(votes)) {
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));        
+        if (concludedVotes.length > 0) {
+            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));
+        }
+    }
+
+    if (multiIteration <= 1) {
+        // Only handle tips one time
+        // Handle tips to vehicle balance holders
+        /**** TODO */
+
+
+        // Unlock tokens in vault
+        if (state.vault) {
+            scanVault(state, block);
+        }
+
+        // Check for any expired loaned tokens
+        if (state.tokens) {
+            returnLoanedTokens(state, block);
+        }
+    }
+
+    if (input.function === 'balance') {
+        return { result: { target, balance } };
+    } else {
         return { state };
     }
+    
 }
 
 

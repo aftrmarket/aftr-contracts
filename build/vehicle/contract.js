@@ -15,6 +15,8 @@ async function handle(state, action) {
   const caller = action.caller;
   const settings = new Map(state.settings);
   const votes = state.votes;
+  let target = "";
+  let balance = 0;
   if (typeof input.iteration !== "undefined") {
     if (isNaN(input.iteration)) {
       ThrowError("Invalid value for iteration.");
@@ -28,35 +30,20 @@ async function handle(state, action) {
   } else {
     block = +SmartWeave.block.height;
   }
-  if (Array.isArray(votes)) {
-    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
-    if (concludedVotes.length > 0) {
-      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
-    }
-  }
-  if (multiIteration <= 1) {
-    if (state.vault) {
-      scanVault(state, block);
-    }
-    if (state.tokens) {
-      returnLoanedTokens(state, block);
-    }
-  }
   if (input.function === "balance") {
-    const target = isArweaveAddress(input.target || caller);
+    target = isArweaveAddress(input.target || caller);
     if (typeof target !== "string") {
       ThrowError("Must specificy target to get balance for.");
     }
-    let balance = 0;
+    balance = 0;
     if (target in balances) {
       balance = balances[target];
     }
-    return { result: { target, balance } };
   }
   if (input.function === "propose") {
     const voteType = input.type;
     let note = input.note;
-    let target = input.target;
+    let target2 = input.target;
     let qty = input.qty;
     let key = input.key;
     let value = input.value;
@@ -166,8 +153,8 @@ async function handle(state, action) {
     if (recipient !== "") {
       vote.recipient = recipient;
     }
-    if (target && target !== "") {
-      vote.target = target;
+    if (target2 && target2 !== "") {
+      vote.target = target2;
     }
     if (!qty) {
       vote.qty = qty;
@@ -182,7 +169,6 @@ async function handle(state, action) {
       vote.note = note;
     }
     votes.push(vote);
-    return { state };
   }
   if (input.function === "vote") {
     const voteId = input.voteId;
@@ -214,13 +200,12 @@ async function handle(state, action) {
       ThrowError("Invalid vote cast.");
     }
     vote.voted.push(caller);
-    return { state };
   }
   if (input.function === "transfer") {
-    const target = input.target;
+    const target2 = input.target;
     const qty = input.qty;
     const callerAddress = isArweaveAddress(caller);
-    const targetAddress = isArweaveAddress(target);
+    const targetAddress = isArweaveAddress(target2);
     if (!Number.isInteger(qty)) {
       ThrowError('Invalid value for "qty". Must be an integer.');
     }
@@ -242,14 +227,13 @@ async function handle(state, action) {
     } else {
       balances[targetAddress] = qty;
     }
-    return { state };
   }
   if (input.function === "withdrawal") {
   }
   if (input.function === "deposit") {
     const txId = input.txId;
     const source = caller;
-    const target = input.target;
+    const target2 = input.target;
     const qty = input.qty;
     const tokenId = input.tokenId;
     const start = input.start;
@@ -261,7 +245,7 @@ async function handle(state, action) {
       txId,
       tokenId,
       source,
-      target,
+      target: target2,
       balance: qty,
       start,
       lockLength
@@ -273,7 +257,6 @@ async function handle(state, action) {
       state["tokens"] = [];
     }
     state.tokens.push(txObj);
-    return { state };
   }
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
@@ -289,9 +272,28 @@ async function handle(state, action) {
       if (nextAction.input.function === "multiInteraction") {
         ThrowError("Nested Multi-interactions are not allowed.");
       }
+      nextAction.caller = caller;
       let result = await handle(state, nextAction);
       iteration++;
     }
+  }
+  if (Array.isArray(votes)) {
+    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
+    if (concludedVotes.length > 0) {
+      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
+    }
+  }
+  if (multiIteration <= 1) {
+    if (state.vault) {
+      scanVault(state, block);
+    }
+    if (state.tokens) {
+      returnLoanedTokens(state, block);
+    }
+  }
+  if (input.function === "balance") {
+    return { result: { target, balance } };
+  } else {
     return { state };
   }
 }

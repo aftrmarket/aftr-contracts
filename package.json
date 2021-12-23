@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "init": "node -r dotenv/config ./tests/init.js",
-    "test": "node -r dotenv/config ./tests/test-input.js",
+    "test": "node -r dotenv/config ./tests/test.js",
+    "test-inc": "node -r dotenv/config ./tests/test-inc.js",
     "build-contract": "node ./scripts/build.js",
     "build-contract-tests": "node ./scripts/build-tests.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",

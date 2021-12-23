@@ -52,6 +52,13 @@ async function arLocalInit() {
     await mine();
     console.log("Verto Contract Source: " + contractTxId);
 
+    // Create Increment contract
+    contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/increment.js'), "utf8");
+    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/incrementInit.json'), "utf8");
+    contractTxId = await createContract(wallet, contractSource, initState, 'Increment');
+    await mine();
+    console.log("Increment Contract Source: " + contractTxId);
+
     // Create AFTR Protocol base contract
     contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");

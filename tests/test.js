@@ -5,18 +5,46 @@ import fs from 'fs';
 
 /******* MODIFY INPUTS */
 
+// const input = {
+//     function: 'propose',
+//     type: 'set',
+//     recipient: '',
+//     target: '',
+//     qty: 0,
+//     key: 'ownership',
+//     value: 'dao',
+//     note: ''
+// };
 const input = {
-    function: 'propose',
-    type: 'set',
-    recipient: '',
-    target: '',
-    qty: 0,
-    key: 'ownership',
-    value: 'dao',
-    note: ''
-};
+    "function": "multiInteraction",
+    "type": "set",
+    "recipient": "",
+    "target": "",
+    "qty": 0,
+    "key": "multi",
+    "value": "",
+    "note": "Multi-Interaction",
+    "actions": [
+      {
+        "input": {
+          "function": "propose",
+          "type": "set",
+          "key": "ticker",
+          "value": "@BLUE"
+        }
+      },
+      {
+        "input": {
+          "function": "propose",
+          "type": "set",
+          "key": "settings.quorum",
+          "value": ".5"
+        }
+      }
+    ]
+  };
 
-const contractId = "K72YqNaXhjogCH4KuxuOUJnuIVqo7Nq9VqM8xUV8sik";
+const contractId = "-Yl-yUKtER7x733INQFCcsXf1IJdj9MpFiDr7JzKjZU";
 
 /******* MODIFY INPUTS */
 
@@ -35,10 +63,10 @@ async function testInput() {
     const addr = await arweave.wallets.jwkToAddress(wallet);
 
     //let txId = await interactWriteDryRun(arweave, wallet, contractId, input);
-    //let txId = await interactWrite(arweave, wallet, contractId, input);
-    //console.log("RESPONSE = " + JSON.stringify(txId));
+    let txId = await interactWrite(arweave, wallet, contractId, input);
+    console.log("RESPONSE = " + JSON.stringify(txId));
 
-    //await mine();
+    await mine();
 
     console.log("READ CONTRACT...");
 

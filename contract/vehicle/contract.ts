@@ -221,7 +221,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let voteId = String(block) + 'txTEST';
         // @ts-expect-error
         if (mode !== 'TEST') {
-            voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id;
+            voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
         }
 
         let vote: VoteInterface = {

@@ -267,15 +267,18 @@ async function handle(state, action) {
       ThrowError("The Multi-interactions call exceeds the maximum number of interations.");
     }
     let iteration = 1;
+    let updatedState = state;
     for (let nextAction of multiActions) {
       nextAction.input.iteration = iteration;
       if (nextAction.input.function === "multiInteraction") {
         ThrowError("Nested Multi-interactions are not allowed.");
       }
       nextAction.caller = caller;
-      let result = await handle(state, nextAction);
+      let result = await handle(updatedState, nextAction);
+      updatedState = result.state;
       iteration++;
     }
+    state = updatedState;
   }
   if (Array.isArray(votes)) {
     const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");

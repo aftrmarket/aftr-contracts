@@ -408,6 +408,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         let iteration = 1;
+        let updatedState = state;
+
         for(let nextAction of multiActions) {
             nextAction.input.iteration = iteration;
             
@@ -419,11 +421,12 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             // Add the caller to the action
             nextAction.caller = caller;
 
-            let result = await handle(state, nextAction);
+            let result =  await handle(updatedState, nextAction);
+            updatedState = result.state;
+
             iteration++;
         }
-
-        //return { state };
+        state = updatedState;
     }
 
     // Find concluded votes in order to finalize

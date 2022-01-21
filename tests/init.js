@@ -2,8 +2,7 @@ import Arweave from 'arweave';
 import request from 'supertest';
 import path from 'path';
 import fs from 'fs';
-import { SmartWeaveNodeFactory, LoggerFactory } from 'redstone-smartweave';
-import { createContractFromTx, simulateCreateContractFromSource } from 'smartweave';
+import { createContractFromTx, createContract } from 'smartweave';
 
 /***
  * This test script assumes an instance of Arweave is running
@@ -22,12 +21,8 @@ const arweave = Arweave.init({
 const __dirname = path.resolve();
 const mine = () => arweave.api.get("mine");
 
-// Redstone SmartWeave config
-LoggerFactory.INST.logLevel('error');
-const redStoneSmartweave = SmartWeaveNodeFactory.memCached(arweave);
-
 async function arLocalInit() {
-    const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile.json')));
+    const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile-test.json')));
     const addr = await arweave.wallets.jwkToAddress(wallet);
 
     const server = process.env.ARWEAVE_HOST + ':' + process.env.ARWEAVE_PORT;
@@ -41,81 +36,89 @@ async function arLocalInit() {
     // Create ArDrive contract
     let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveSource.js'), "utf8");
     let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveInitState.json'), "utf8");
-    let contractTxId = await createContract(wallet, contractSource, initState, 'ArDrive');
+    let contractTxId = await createContract(arweave, wallet, contractSource, initState);
     await mine();
-    console.log("ArDrive Contract Source: " + contractTxId);
+    console.log("ArDrive Contract ID: " + contractTxId);
 
     // Create Verto contract
     contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoSource.js'), "utf8");
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'Verto');
+    contractTxId = await createContract(arweave, wallet, contractSource, initState);
     await mine();
-    console.log("Verto Contract Source: " + contractTxId);
+    console.log("Verto Contract ID: " + contractTxId);
 
     // Create Increment contract
     contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/increment.js'), "utf8");
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/incrementInit.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'Increment');
+    contractTxId = await createContract(arweave, wallet, contractSource, initState);
     await mine();
-    console.log("Increment Contract Source: " + contractTxId);
+    console.log("Increment Contract ID: " + contractTxId);
 
     // Create AFTR Protocol base contract
     contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'AFTR');
+    contractTxId = await createContract(arweave, wallet, contractSource, initState);
     await mine();
-    console.log("AFTR Contract Source: " + contractTxId);
+    console.log("AFTR Contract ID: " + contractTxId);
 
-    //const aftrContractId = contractTxId;
+    const aftrSourceId = await getContractSourceId(contractTxId);
     
     // Create some AFTR vehicles for Testing using AFTR's contract source
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrAlquipaInitState.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'AFTR - Alquipa');
+    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
     await mine();
     console.log("AFTR Vehicle - Alquipa: " + contractTxId);
 
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrBlueHorizonInitState.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'AFTR - Blue Horizon');
+    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
     await mine();
     console.log("AFTR Vehicle - Blue Horizon: " + contractTxId);
 
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrChillinInitState.json'), "utf8");
-    contractTxId = await createContract(wallet, contractSource, initState, 'AFTR - Chillin');
+    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
     await mine();
     console.log("AFTR Vehicle - Chillin: " + contractTxId);
 
     balance = await arweave.wallets.getBalance(addr);
     console.log("BALANCE: " + balance);
+
+    //await readTags("k98IUd62AZZQ75Dv9RZpy0WaBkxIwVJQ8IS0FaaLYhc");
 }
 
-async function createContract(wallet, contractSource, initState, pst) {
-    let swTags = [
-        { name: 'App-Name', value: pst },
-        { name: 'App-Version', value: '0.0.0'},
-        { name: 'Content-Type', value: 'application/javascript' }
-    ];
+async function readTags(txId) {
+    let tx = await arweave.transactions.get(txId);
 
-    if (pst.substr(0, 4) === 'AFTR') {
-        swTags.push(
-            { name: 'Protocol', value:  process.env.SMARTWEAVE_TAG_PROTOCOL }
-        );
-    }
+    tx.get('tags').forEach(tag => {
+        let key = tag.get('name', {decode: true, string: true});
+        let value = tag.get('value', {decode: true, string: true});
+        console.log(`${key} : ${value}`);    
+    })
+}
 
-    const contractTxId = await redStoneSmartweave.createContract.deploy({
-        wallet,
-        initState,
-        src: contractSource,
-        tags: swTags
+async function getContractSourceId(txId) {
+    let tx = await arweave.transactions.get(txId);
+    let allTags = [];
+    tx.get('tags').forEach(tag => {
+        let key = tag.get('name', {decode: true, string: true});
+        let value = tag.get('value', {decode: true, string: true});
+        allTags.push({
+            key,
+            value
+        });
     });
-
-    return contractTxId;
+    for (let i = 0; i < allTags.length; i++) {
+        if (allTags[i].key === 'Contract-Src') {
+            console.log(`${allTags[i].key} : ${allTags[i].value}`); 
+            return allTags[i].value;
+        }
+    }
 }
 
-async function createAftrVehicle(wallet, aftrId, initState, name) {
+async function createAftrVehicle(wallet, aftrId, initState) {
     let swTags = [
-        { name: 'App-Name', value: name },
-        { name: 'App-Version', value: '0.0.0'},
-        { name: 'Content-Type', value: 'application/javascript' },
         { name: 'Protocol', value:  process.env.SMARTWEAVE_TAG_PROTOCOL }
     ];
     let contractTxId = await createContractFromTx(arweave, wallet, aftrId, initState, swTags);
@@ -124,3 +127,5 @@ async function createAftrVehicle(wallet, aftrId, initState, name) {
 }
 
 arLocalInit();
+//readTags("dqHBM990sXmxx964wPC9_2ZTPeAWLEyka0NuvejYb54");
+// getContractSourceId("dqHBM990sXmxx964wPC9_2ZTPeAWLEyka0NuvejYb54");

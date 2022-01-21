@@ -5,7 +5,7 @@
       "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
       "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1000,
       "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2000,
-      "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ": 5000,
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 5000,
       "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
     },
     "vault": {},
@@ -88,8 +88,8 @@
     "status": "started",
     "tipsAr": 100,
     "tipsMisc": 1000,
-    "creator": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
-    "ownership": "dao",
+    "creator": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+    "ownership": "single",
     "settings": [
       [
         "quorum",

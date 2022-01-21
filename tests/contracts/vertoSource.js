@@ -24,6 +24,7 @@ export function handle(state, action) {
         throw new ContractError(`Caller balance not high enough to send ${qty} token(s)!`);
       }
       balances[caller] -= qty;
+
       if (target in balances) {
         balances[target] += qty;
       } else {

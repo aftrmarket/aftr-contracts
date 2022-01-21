@@ -7,6 +7,8 @@
   "scripts": {
     "init": "node -r dotenv/config ./tests/init.js",
     "test": "node -r dotenv/config ./tests/test.js",
+    "sw-read": "node -r dotenv/config ./tests/sw-read.js",
+    "genkey": "node -r dotenv/config ./tests/genkey.js",
     "test-inc": "node -r dotenv/config ./tests/test-inc.js",
     "build-contract": "node ./scripts/build.js",
     "build-contract-tests": "node ./scripts/build-tests.js",
@@ -21,7 +23,6 @@
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
-    "redstone-smartweave": "^0.3.10-alpha.19",
     "smartweave": "^0.4.46"
   },
   "devDependencies": {

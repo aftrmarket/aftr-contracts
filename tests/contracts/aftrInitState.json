@@ -198,6 +198,7 @@
             }
         ]
     },
+    "votes": [],
     "settings" : [
         [ "quorum", 0.5 ],
         [ "voteLength", 2000 ],

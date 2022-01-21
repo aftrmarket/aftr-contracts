@@ -116,19 +116,15 @@ const txAction = {
 ```
 
 ### Deposit
-The deposit function transfers Arweave assets into the vehicle. The caller must supply the Transaction ID in order for the AFTR contract to verify the token transfer. Once verified, the vehicle state is updated to show the assets in the token array of objects.
-
-**NOTE: This may change once tx validation is implemented.**
+The deposit function transfers Arweave assets into the vehicle. The caller must supply the Token ID and Transaction ID in order for the AFTR contract to verify the token transfer. Once verified, the vehicle state is updated to show the assets in the token array of objects.
 
 #### Sample Deposit Action
 ```typescript
 const depAction = {
     input: {
         function: 'deposit',
-        txId: 'BoRZeKy5kudTtI1TS2CMri8XNC4MPqMnBkCm2BV9i4F',
-        start: 123,
-        tokenId: 'T-SQUID',
-        qty: 10000
+        tokenId: 'ggDeF2IFS7mcun_utV-e6ZY9SNu1UhhWuvo7zNbUhRg',
+        txId: 'BoRZeKy5kudTtI1TS2CMri8XNC4MPqMnBkCm2BV9i4F'
     }
 };
 ```

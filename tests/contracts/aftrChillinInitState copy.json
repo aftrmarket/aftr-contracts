@@ -4,7 +4,7 @@
     "balances": {
         "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 10000,
         "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2000,
-        "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 1050,
+        "tv7gJr5TAys7oTpbfHI8dGO7t04jmacTNo20EfB0GJo": 1050,
         "zVNaaPGR8yL5Dp5x4Jb-XPH4hlvB7ZoAvVFquw7J58w": 100,
         "ffOomWmOgtmJ816U_l5hsMpmEFsx5DUDxUEAcoLOy7Q": 200,
         "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw": 588,
@@ -47,7 +47,7 @@
     "status": "started",
     "tipsAr": 235,
     "tipsMisc": 2549,
-    "creator" : "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+    "creator" : "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw",
     "ownership" : "single",
     "votingSystem" : "equal",
     "settings": [

@@ -231,28 +231,23 @@ async function handle(state, action) {
   if (input.function === "withdrawal") {
   }
   if (input.function === "deposit") {
-    const txId = input.txId;
-    const source = caller;
-    const target2 = input.target;
-    const qty = input.qty;
-    const tokenId = input.tokenId;
-    const start = input.start;
+    ContractAssert(input.txId, "The transaction is not valid.  Tokens were not transferred to vehicle.");
     let lockLength = 0;
     if (input.lockLength) {
       lockLength = input.lockLength;
     }
+    const validatedTx = await validateTransfer(input.tokenId, input.txId);
     const txObj = {
-      txId,
-      tokenId,
-      source,
-      target: target2,
-      balance: qty,
-      start,
+      txId: input.txId,
+      tokenId: validatedTx.tokenId,
+      source: caller,
+      balance: validatedTx.qty,
+      start: validatedTx.block,
+      name: "",
+      ticker: "",
+      logo: "",
       lockLength
     };
-    if (!txId) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
-    }
     if (!state.tokens) {
       state["tokens"] = [];
     }
@@ -411,4 +406,40 @@ function updateSetting(vehicle, key, value) {
   if (!found) {
     vehicle.settings.push([key, value]);
   }
+}
+async function validateTransfer(tokenId, transferTx) {
+  const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
+  const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
+  let txObj = {
+    tokenId,
+    qty: 0,
+    block: SmartWeave.block.height,
+    name: tokenInfo.name,
+    ticker: tokenInfo.ticker,
+    logo: tokenInfo.logo
+  };
+  try {
+    tx.get("tags").forEach((tag) => {
+      if (tag.get("name", { decode: true, string: true }) === "Input") {
+        const input = JSON.parse(tag.get("value", { decode: true, string: true }));
+        ContractAssert(input.function === "transfer", "The interaction is not a transfer");
+        ContractAssert(input.target === SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value, "The target of this transfer is not this contract.");
+        txObj.qty = input.qty;
+      }
+    });
+  } catch (err) {
+    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+  }
+  return txObj;
+}
+async function ensureValidInteraction(contractId, interactionId) {
+  const contractInteractions = await SmartWeave.contracts.readContractState(contractId, void 0, true);
+  ContractAssert(interactionId in contractInteractions, "The interaction is not associated with this contract.");
+  ContractAssert(contractInteractions[interactionId], "The interaction was invalid.");
+  const settings = new Map(contractInteractions.state.settings);
+  return {
+    name: contractInteractions.state.name,
+    ticker: contractInteractions.state.ticker,
+    logo: settings.get("communityLogo")
+  };
 }

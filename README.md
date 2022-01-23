@@ -54,6 +54,9 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
 TokenInterface {
     txId: string,
     tokenId: string,
+    name: string,
+    ticker: string,
+    logo: string,
     source: string,
     balance: number,
     start: number,          // Stamp when added

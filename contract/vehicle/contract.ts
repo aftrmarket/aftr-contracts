@@ -368,9 +368,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             source: caller,
             balance: validatedTx.qty,
             start: validatedTx.block,
-            name: '',
-            ticker: '',
-            logo: '',
+            name: validatedTx.name,
+            ticker: validatedTx.ticker,
+            logo: validatedTx.logo,
             lockLength: lockLength
         };
 
@@ -615,7 +615,6 @@ async function validateTransfer(tokenId: string, transferTx: string) {
 
     // First, make sure interaction occurred
     const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
-    //await ensureValidInteraction(tokenId, transferTx);
 
     // Read the transaction
     const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
@@ -638,7 +637,7 @@ async function validateTransfer(tokenId: string, transferTx: string) {
                 ContractAssert(input.function === "transfer", "The interaction is not a transfer");
 
                 // Make sure that the target of the transfer transaction is THIS contract
-                // @ts-ignore
+                //@ts-ignore
                 ContractAssert(input.target === SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value, "The target of this transfer is not this contract.");
 
                 txObj.qty = input.qty;
@@ -656,11 +655,11 @@ async function ensureValidInteraction(contractId: string, interactionId: string)
 
     // Make sure interaction exists
     // @ts-ignore
-    ContractAssert(interactionId in contractInteractions, "The interaction is not associated with this contract.");
+    ContractAssert(interactionId in contractInteractions.validity, "The interaction is not associated with this contract.");
 
     // Make sure the transfer was valid
     // @ts-ignore
-    ContractAssert(contractInteractions[interactionId], "The interaction was invalid.");
+    ContractAssert(contractInteractions.validity[interactionId], "The interaction was invalid.");
 
     const settings: Map<string, any> = new Map(contractInteractions.state.settings);
 
@@ -670,26 +669,3 @@ async function ensureValidInteraction(contractId: string, interactionId: string)
         logo: settings.get("communityLogo")
     };
 }
-// const ensureValidInteraction = async (
-//     contractID: string,
-//     interactionID: string
-//   ) => {
-//     const {
-//       validity: contractTxValidities
-//       // @ts-ignore
-//     } = await SmartWeave.contracts.readContractState(contractID, undefined, true);
-  
-//     // The interaction tx of the token somewhy does not exist
-//     // @ts-ignore
-//     ContractAssert(
-//       interactionID in contractTxValidities,
-//       "The interaction is not associated with this contract"
-//     );
-  
-//     // Invalid transfer
-//     // @ts-ignore
-//     ContractAssert(
-//       contractTxValidities[interactionID],
-//       "The interaction was invalid"
-//     );
-//   };

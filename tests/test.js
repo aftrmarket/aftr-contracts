@@ -5,8 +5,8 @@ import fs, { read } from 'fs';
 
 /******* MODIFY INPUTS */
 
-const contractIdBH = "wQNmjHruA4Oc7OnEFh_ehjjLeGIpwOZ9AaHOy5SWKGA";
-const contractIdVerto = "M4LCq9CXj0hMdi1zg61e3gjmxYVDG1ZgaqRVDb_bk5A"; 
+const contractIdBH = "4cNJGGukKpvhiDXcRONf-wp12sf8uy9wOnds5Sjdf_g";
+const contractIdVerto = "PfQPUZGK2HXy9jOcBwtJ0vegvswoPjxaa4kbVh_sSOI"; 
 
 const inputTransfer = {
     function: "transfer",
@@ -14,16 +14,16 @@ const inputTransfer = {
     qty: 9095
 };
 
-const input = {
-    "function": "propose",
-    "type": "set",
-    "recipient": "",
-    "target": "",
-    "qty": 0,
-    "key": "name",
-    "value": "Joe Chill",
-    "note": ""
-  }
+// const input = {
+//     "function": "propose",
+//     "type": "set",
+//     "recipient": "",
+//     "target": "",
+//     "qty": 0,
+//     "key": "name",
+//     "value": "Joe Chill",
+//     "note": ""
+//   }
 
 // const input = {
 //     function: 'propose',
@@ -91,11 +91,11 @@ async function testInput() {
     await mine();
 
     //let txId = await interactWriteDryRun(arweave, wallet, contractIdVerto, inputTransfer);
-    //let vertoTxId = await interactWrite(arweave, wallet, contractIdVerto, inputTransfer);
-    //console.log("Transfer Verto = " + JSON.stringify(vertoTxId));
+    let vertoTxId = await interactWrite(arweave, wallet, contractIdVerto, inputTransfer);
+    console.log("Transfer Verto = " + JSON.stringify(vertoTxId));
 
-    let txId = await interactWrite(arweave, wallet, contractIdBH, input);
-    console.log("Vehicle Change = " + JSON.stringify(txId));
+    // let txId = await interactWrite(arweave, wallet, contractIdBH, input);
+    // console.log("Vehicle Change = " + JSON.stringify(txId));
 
     await mine();
 
@@ -105,38 +105,40 @@ async function testInput() {
 
     //let contractSourceIdVerto = getContractSourceId(contractIdVerto);
 
-    // const inputDeposit = {
-    //     function: 'deposit',
-    //     tokenId: contractIdVerto,
-    //     txId: vertoTxId
-    // };
+    const inputDeposit = {
+        function: 'deposit',
+        tokenId: contractIdVerto,
+        txId: vertoTxId
+    };
 
-    // let txId = await interactWrite(arweave, wallet, contractIdBH, inputDeposit);
+    let txId = await interactWrite(arweave, wallet, contractIdBH, inputDeposit);
+    console.log(txId);
     // console.log("Deposit BH = " + JSON.stringify(txId));
 
-    // await mine();
+    await mine();
 
     console.log("READ CONTRACT...");
     let vehicle = await readContract(arweave, contractIdBH, undefined, true);
     console.log(JSON.stringify(vehicle));
 }
 
-// async function readTags() {
-//     let tx = await arweave.transactions.get("UYt4RvaYXtfHoKOwsvNeB1DqErGg8lNyxjZe4Ok3J7w");
+async function readTags(coolTag) {
+    let tx = await arweave.transactions.get(coolTag);
 
-//     tx.get('tags').forEach(tag => {
-//         let key = tag.get('name', {decode: true, string: true});
-//         let value = tag.get('value', {decode: true, string: true});
-//         console.log(`${key} : ${value}`);    
-//     })
-// }
+    tx.get('tags').forEach(tag => {
+        let key = tag.get('name', {decode: true, string: true});
+        let value = tag.get('value', {decode: true, string: true});
+        console.log(`${key} : ${value}`);    
+    })
+}
 
 async function readOut(contractId) {
     console.log("READ CONTRACT...");
-    let vehicle = await readContract(arweave, contractId);
-    console.log("Name: " + vehicle.name);
-    console.log("Ticker: " + vehicle.ticker);
-    console.log("Vehicle: " + JSON.stringify(vehicle));
+    let vehicle = await readContract(arweave, contractId, undefined, true);
+    console.log(vehicle);
+    // console.log("Name: " + vehicle.name);
+    // console.log("Ticker: " + vehicle.ticker);
+    // console.log("Vehicle: " + JSON.stringify(vehicle));
 }
 
 async function getContractSourceId(txId) {
@@ -159,5 +161,5 @@ async function getContractSourceId(txId) {
 }
 
 testInput();
-// readTags();
-//readOut(contractIdBH);
+// readTags("E3k4OWsoQ_5JZPAjP4I4qTtQVkuXQgcCEjSoHjnXsig");
+//readOut(contractIdVerto);

@@ -243,9 +243,9 @@ async function handle(state, action) {
       source: caller,
       balance: validatedTx.qty,
       start: validatedTx.block,
-      name: "",
-      ticker: "",
-      logo: "",
+      name: validatedTx.name,
+      ticker: validatedTx.ticker,
+      logo: validatedTx.logo,
       lockLength
     };
     if (!state.tokens) {
@@ -434,8 +434,8 @@ async function validateTransfer(tokenId, transferTx) {
 }
 async function ensureValidInteraction(contractId, interactionId) {
   const contractInteractions = await SmartWeave.contracts.readContractState(contractId, void 0, true);
-  ContractAssert(interactionId in contractInteractions, "The interaction is not associated with this contract.");
-  ContractAssert(contractInteractions[interactionId], "The interaction was invalid.");
+  ContractAssert(interactionId in contractInteractions.validity, "The interaction is not associated with this contract.");
+  ContractAssert(contractInteractions.validity[interactionId], "The interaction was invalid.");
   const settings = new Map(contractInteractions.state.settings);
   return {
     name: contractInteractions.state.name,

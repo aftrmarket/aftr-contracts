@@ -18,7 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "arlocal": "^1.1.13",
+    "arlocal": "^1.1.16",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",

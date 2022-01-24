@@ -134,6 +134,22 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         // Validate input for member and token management
         let recipient = '';
+
+        // Determine start and lockLength
+        if (state.ownership === 'single') {
+            lockLength = 0;
+        } else if (!lockLength || typeof lockLength === 'undefined') {
+            lockLength = settings.get('voteLength');
+        } else if (lockLength < 0) {
+            ThrowError("Invalid Lock Length.");
+        }
+
+        if (!start || typeof start === 'undefined') {
+            start = block;
+        } else if (start < 0 || typeof start !== 'number') {
+            ThrowError("Invalid Start value.");
+        }
+
         if (voteType === 'mint' || voteType === 'burn' || voteType === 'mintLocked' || voteType === 'addMember' || voteType === 'removeMember') {
             if (!input.recipient) {
                 ThrowError("Error in input.  Recipient not supplied.");
@@ -169,18 +185,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 if (recipient === state.creator) {
                     ThrowError("Can't remove creator from balances.");
                 }
-            }
-
-            if (!lockLength) {
-                lockLength = 0;
-            } else if (lockLength < settings.get('lockMinLength') || lockLength > settings.get('lockMaxLength')) {
-                ThrowError("Invalid Lock Length.");
-            }
-
-            if (!start) {
-                start = block;
-            } else if (start < 0) {
-                ThrowError("Invalid Start value.");
             }
 
             recipient = isArweaveAddress(input.recipient);
@@ -232,7 +236,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             yays: 0,
             nays: 0,
             voted: [],
-            start: start
+            start: start,
+            lockLength: lockLength
         }
         if (recipient !== '') {
             vote.recipient = recipient;

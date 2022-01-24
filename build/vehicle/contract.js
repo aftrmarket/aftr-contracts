@@ -72,6 +72,18 @@ async function handle(state, action) {
       ThrowError("Invalid voting system.");
     }
     let recipient = "";
+    if (state.ownership === "single") {
+      lockLength = 0;
+    } else if (!lockLength || typeof lockLength === "undefined") {
+      lockLength = settings.get("voteLength");
+    } else if (lockLength < 0) {
+      ThrowError("Invalid Lock Length.");
+    }
+    if (!start || typeof start === "undefined") {
+      start = block;
+    } else if (start < 0 || typeof start !== "number") {
+      ThrowError("Invalid Start value.");
+    }
     if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
         ThrowError("Error in input.  Recipient not supplied.");
@@ -100,16 +112,6 @@ async function handle(state, action) {
         if (recipient === state.creator) {
           ThrowError("Can't remove creator from balances.");
         }
-      }
-      if (!lockLength) {
-        lockLength = 0;
-      } else if (lockLength < settings.get("lockMinLength") || lockLength > settings.get("lockMaxLength")) {
-        ThrowError("Invalid Lock Length.");
-      }
-      if (!start) {
-        start = block;
-      } else if (start < 0) {
-        ThrowError("Invalid Start value.");
       }
       recipient = isArweaveAddress(input.recipient);
       if (voteType === "mint") {
@@ -148,7 +150,8 @@ async function handle(state, action) {
       yays: 0,
       nays: 0,
       voted: [],
-      start
+      start,
+      lockLength
     };
     if (recipient !== "") {
       vote.recipient = recipient;

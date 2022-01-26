@@ -35,6 +35,11 @@ export interface StateInterface {
             }
         ],
     },
+    invocations: string[],                          // Required for Foreign Call Protocol (FCP)
+    foreignCalls: {                                 // Required for Foreign Call Protocol (FCP)
+        contract: string,
+        input: any
+    }[],
     settings: Map<string, any>
 }
 
@@ -51,10 +56,15 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'lease' | 'withdrawal',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'multiInteraction',
+    type?: string,
+    recipient?: string,
     target?: string,
     qty?: number,
-    multi?: boolean
+    key?: string,
+    value?: string,
+    note?: string,
+    actions?: InputInterface[]
 }
 
 export interface TransferInterface {

@@ -389,7 +389,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         state.tokens.push(txObj);
     }
 
-    if (input.function === 'multiInteraction') {
+    if (input.function === "multiInteraction") {
         /*** A multi-interaction is being called.  
          * This allows multiple changes to be proposed at once.
          * It's a recursive call to the handle function.

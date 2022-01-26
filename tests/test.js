@@ -5,8 +5,8 @@ import fs, { read } from 'fs';
 
 /******* MODIFY INPUTS */
 
-const contractIdBH = "4cNJGGukKpvhiDXcRONf-wp12sf8uy9wOnds5Sjdf_g";
-const contractIdVerto = "PfQPUZGK2HXy9jOcBwtJ0vegvswoPjxaa4kbVh_sSOI"; 
+const contractIdBH = "8KzuSqztMhK6csdIxmojcxb-mcLToZiocnH2O7SsGdk";
+const contractIdVerto = "_F_Quktxc4WDz0QA8pn0Yy2t-mMcNi9N24NinWOZLZ8"; 
 
 const inputTransfer = {
     function: "transfer",
@@ -160,6 +160,6 @@ async function getContractSourceId(txId) {
     }
 }
 
-testInput();
-// readTags("E3k4OWsoQ_5JZPAjP4I4qTtQVkuXQgcCEjSoHjnXsig");
+//testInput();
+readTags(contractIdVerto);
 //readOut(contractIdVerto);

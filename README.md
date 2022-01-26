@@ -22,6 +22,11 @@ The AFTR state follows common practices established by early SmartWeave contract
         }]
     },
     votes: VoteInterface[],
+    invocations: string[],                          // Required for Foreign Call Protocol (FCP)
+    foreignCalls: {                                 // Required for Foreign Call Protocol (FCP)
+        contract: string,
+        input: any
+    }[],
     tokens?: [                                      // Tokens stored in vehicle
         TokenInterface,
     ],
@@ -48,6 +53,22 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
 
 
 ## Interfaces
+
+### Input Interfact
+```typescript
+InputInterface {
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'multiInteraction';
+    type?: string;
+    recipient?: string;
+    target?: string;
+    qty?: number;
+    key?: string;
+    value?: string;
+    note?: string;
+    actions?: InputInterface[]  // For multi-interaction function
+}
+```
+
 
 ### Token Interface
 ```typescript
@@ -88,6 +109,16 @@ VoteInterface {
 ```
 
 All changes to the vehicle state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the vehicle is owned by a single member or a DAO. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is DAO, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the vehicle.
+
+### Contract Interaction Interface
+```typescript
+ContractInteractionInterface {
+    function: 'invoke';
+    foreignContract: string;
+    invocation: InputInterface
+}
+```
+For more information on the Foreign Call Protocol (FCP), see the [FCP Spec](https://www.notion.so/Foreign-Call-Protocol-Specification-61e221e5118a40b980fcaade35a2a718).
 
 ## Functions in the AFTR Smart Contract
 
@@ -133,7 +164,7 @@ const depAction = {
 ```
 
 ### Withdrawal
-The withdrawal function utilizes the Foreign Call Protocol (FCP) to transfers tokens out of the vehicle. Arweave PSTs or assets must support the FCP in order for this to work.
+The withdrawal function utilizes the [Foreign Call Protocol (FCP)](https://www.notion.so/Foreign-Call-Protocol-Specification-61e221e5118a40b980fcaade35a2a718) to transfers tokens out of the vehicle. Arweave PSTs or assets must support the FCP in order for this to work.
 
 #### Sample Withdrawal Action
 ```typescript

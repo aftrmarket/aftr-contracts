@@ -25,7 +25,7 @@ The AFTR state follows common practices established by early SmartWeave contract
     invocations: string[],                          // Required for Foreign Call Protocol (FCP)
     foreignCalls: {                                 // Required for Foreign Call Protocol (FCP)
         contract: string,
-        input: any
+        input: InputInterface
     }[],
     tokens?: [                                      // Tokens stored in vehicle
         TokenInterface,
@@ -54,7 +54,7 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
 
 ## Interfaces
 
-### Input Interfact
+### Input Interface
 ```typescript
 InputInterface {
     function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'multiInteraction';

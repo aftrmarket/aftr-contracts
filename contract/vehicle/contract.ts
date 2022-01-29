@@ -465,7 +465,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     } else {
         return { state };
     }
-    
 }
 
 
@@ -505,7 +504,7 @@ function scanVault(vehicle, block) {
 function returnLoanedTokens(vehicle, block) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
     if (Array.isArray(vehicle.tokens)) {
-        const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength >= block));
+        const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength <= block));
         unlockedTokens.forEach(token => processWithdrawal(vehicle, token));
     }
 }

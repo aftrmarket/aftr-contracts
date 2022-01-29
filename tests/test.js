@@ -5,8 +5,8 @@ import fs, { read } from 'fs';
 
 /******* MODIFY INPUTS */
 
-const contractIdBH = "8KzuSqztMhK6csdIxmojcxb-mcLToZiocnH2O7SsGdk";
-const contractIdVerto = "_F_Quktxc4WDz0QA8pn0Yy2t-mMcNi9N24NinWOZLZ8"; 
+const contractIdBH = "2lcSq_k36DeM62JqZoRzDiaMCW4pDuHsAPELcop3kGA";
+const contractIdVerto = "qdn_eAblcIWHJs2NgQ1UabD92pcbxqwR649AG-EWHCk"; 
 
 const inputTransfer = {
     function: "transfer",
@@ -135,7 +135,7 @@ async function readTags(coolTag) {
 async function readOut(contractId) {
     console.log("READ CONTRACT...");
     let vehicle = await readContract(arweave, contractId, undefined, true);
-    console.log(vehicle);
+    console.log(JSON.stringify(vehicle));
     // console.log("Name: " + vehicle.name);
     // console.log("Ticker: " + vehicle.ticker);
     // console.log("Vehicle: " + JSON.stringify(vehicle));
@@ -160,6 +160,6 @@ async function getContractSourceId(txId) {
     }
 }
 
-//testInput();
-readTags(contractIdVerto);
-//readOut(contractIdVerto);
+testInput();
+//readTags(contractIdVerto);
+//readOut(contractIdBH);

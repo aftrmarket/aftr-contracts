@@ -1,6 +1,6 @@
 // import { json } from "stream/consumers";
 // import { parseJsonText } from "typescript";
-import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface } from "./faces";
+import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface, ForeignCallInterface } from "./faces";
 
 const mode = 'PROD';    // If TEST, SmartWeave not used & messages print to console.
 
@@ -389,6 +389,80 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         state.tokens.push(txObj);
     }
 
+    /*** Begin Foreign Call Protocol (FCP) Implementation */
+
+    if (input.function === "invoke") {
+        // Ensure that the interaction has an invocation object
+        //@ts-expect-error
+        ContractAssert(!!input.invocation, "Missing function invocation.");
+        //@ts-expect-error
+        ContractAssert(typeof input.invocation !== 'string', "Invalide invocation.");
+      
+        // Ensure that the interaction has a foreign contract ID
+        //@ts-expect-error
+        ContractAssert(!!input.foreignContract, "Missing Foreign Contract ID.");
+        //@ts-expect-error
+        ContractAssert(typeof input.foreignContract !== 'string', "Invalide Foreign Contract ID.");
+      
+        //@ts-expect-error
+        ContractAssert(typeof input.foreignContract !== 'string', "Invalide input.");
+
+        // Push call to foreignCalls
+        state.foreignCalls.push({
+            //@ts-expect-error
+            txID: SmartWeave.transaction.id,
+            //@ts-expect-error
+            contract: input.foreignContract,
+            //@ts-expect-error
+            input: input.invocation
+        });
+      
+    }
+
+    if (input.function === "readOutbox") {
+        // Ensure that a contract ID is passed
+        //@ts-expect-error
+        ContractAssert(!!input.contract, "Missing contract to invoke");
+      
+        // Read the state of the foreign contract
+        const foreignState = await SmartWeave.contracts.readContractState(
+          input.contract
+        );
+      
+        // Check if the foreign contract supports the foreign call protocol and compatible with the call
+        //@ts-expect-error
+        ContractAssert(
+          !!foreignState.foreignCalls,
+          "Contract is missing support for foreign calls"
+        );
+      
+        // Get foreign calls for this contract that have not been executed
+        const calls: ForeignCallInterface[] = foreignState.foreignCalls.filter(
+          (element: ForeignCallInterface) =>
+            element.contract === SmartWeave.contract.id &&
+            //@ts-expect-error
+            !state.invocations.includes(element.txID)
+        );
+      
+        // Run all invocations
+        let res = state;
+      
+        for (const entry of calls) {
+          // Run invocation
+          //@ts-expect-error
+          res = (await handle(res, { caller: input.contract, input: entry.input })).state;
+          
+          // Push invocation to executed invocations
+          //@ts-expect-error
+          res.invocations.push(entry.txID);
+        }
+      
+        return res;
+    }
+
+
+    /*** End FCP */
+
     if (input.function === "multiInteraction") {
         /*** A multi-interaction is being called.  
          * This allows multiple changes to be proposed at once.
@@ -422,6 +496,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             nextAction.caller = caller;
 
             let result =  await handle(updatedState, nextAction);
+            //@ts-expect-error
             updatedState = result.state;
 
             iteration++;
@@ -436,7 +511,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
      * AND status of vote == 'active'
     ***/
 
-     if (Array.isArray(votes)) {
+    if (Array.isArray(votes)) {
         const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));        
         if (concludedVotes.length > 0) {
             finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "init": "node -r dotenv/config ./tests/init.js",
+    "init-play": "node -r dotenv/config ./tests/init-play.js",
     "test": "node -r dotenv/config ./tests/test.js",
     "sw-read": "node -r dotenv/config ./tests/sw-read.js",
     "genkey": "node -r dotenv/config ./tests/genkey.js",
@@ -18,6 +19,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@three-em/js": "^0.2.0",
     "arlocal": "^1.1.16",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",

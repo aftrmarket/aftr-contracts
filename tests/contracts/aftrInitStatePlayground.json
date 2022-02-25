@@ -1,0 +1,212 @@
+{
+    "name" : "AFTR",
+    "ticker" : "AFTR-v001",
+    "balances" : {
+        "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 150000000,
+        "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I" : 100000000
+    },
+    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "ownership" : "single",
+    "votingSystem": "weighted",
+    "status" : "stopped",
+    "vault" : {
+        "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I" : [
+            {
+                "balance" : 12500000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 12500000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 12500000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "VlpcjrQ8mirGC-gsnkYbSscYY-sFkLxkRhjPrbdDfyU" : [
+            {
+                "balance" : 1250000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 1250000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 1250000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "inv2" : [
+            {
+                "balance" : 250000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 250000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 250000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "inv3" : [
+            {
+                "balance" : 150000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 150000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 150000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "1DovGdNGyQ55fuSljJZngFlutMdjmp8D3e5gQ4EV09U" : [
+            {
+                "balance" : 500000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 500000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 500000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "inv5" : [
+            {
+                "balance" : 333333,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 333333,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 333334,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "inv6" : [
+            {
+                "balance" : 16666,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 16667,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 16667,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "inv7" : [
+            {
+                "balance" : 1666666,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 1666667,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 1666667,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "HN76oJF8GsZCvOjPqeZExKvgGMFWc3jPGgT2Z6oW3LU" : [
+            {
+                "balance" : 2500000,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 2500000,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 2500000,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "arDP0i1bx_rnToWcTqrhGeEajPNw0NWnfdiax0LiXAo" : [
+            {
+                "balance" : 833333,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 833333,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 833334,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ],
+        "_0czuHEtof2g6fQ7EyI8AWbUcNPWg0FN6GCyInQ3-JA" : [
+            {
+                "balance" : 833333,
+                "end" : 525960,
+                "start" : 1
+            },
+            {
+                "balance" : 833333,
+                "end" : 788940,
+                "start" : 1
+            },
+            {
+                "balance" : 833334,
+                "end" : 1051920,
+                "start" : 1
+            }
+        ]
+    },
+    "votes": [],
+    "settings" : [
+        [ "quorum", 0.5 ],
+        [ "voteLength", 2000 ],
+        [ "lockMinLength", 100 ],
+        [ "lockMaxLength", 10000 ],
+        [ "communityAppUrl", "https://aftr.market" ],
+        [ "communityDiscussionLinks", "" ],
+        [ "communityDescription", "" ],
+        [ "communityLogo", "1RgJQENTmMlYxlL4I3BS9gnMasztmxpcXvRVhpsw4Oc"]
+    ]
+}

@@ -1,6 +1,8 @@
 {
     "name": "Verto",
     "ticker": "VRT",
+    "invocations": [],
+    "foreignCalls": [],
     "balances": {
       "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 102000,
       "aLemOhg9OGovn-0o4cOCbueiHT9VgdYnpJpq7NgMA1A": 177871612,

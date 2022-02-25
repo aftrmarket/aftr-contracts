@@ -1,0 +1,40 @@
+{
+    "name": "AFTR DB",
+    "ticker": "AFTRDB",
+    "balances": {
+      "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1000,
+      "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2000,
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 5000,
+      "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
+    },
+    "vehicles" : {},
+    "vault": {},
+    "votes": [],
+    "tokens": [],
+    "status": "started",
+    "creator": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+    "ownership": "single",
+    "settings": [
+      [
+        "quorum",
+        ".6"
+      ],
+      [
+        "voteLength",
+        2000
+      ],
+      [
+        "lockMinLength",
+        100
+      ],
+      [
+        "lockMaxLength",
+        10000
+      ],
+      [
+        "communityLogo",
+        "1RgJQENTmMlYxlL4I3BS9gnMasztmxpcXvRVhpsw4Oc"
+      ]
+    ]
+  }

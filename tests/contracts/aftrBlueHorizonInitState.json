@@ -1,6 +1,6 @@
 {
     "name": "Blue Horizon",
-    "ticker": "AFTR-BLUE",
+    "ticker": "BLUE",
     "balances": {
       "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
       "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1000,
@@ -107,6 +107,10 @@
       [
         "lockMaxLength",
         10000
+      ],
+      [
+          "communityDescription",
+          "Blue Horizon focuses on indexing infrastructure PSTs."
       ],
       [
         "communityLogo",

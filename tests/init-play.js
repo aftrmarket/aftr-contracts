@@ -2,7 +2,7 @@ import Arweave from 'arweave';
 import request from 'supertest';
 import path from 'path';
 import fs from 'fs';
-import { createContractFromTx, createContract } from 'smartweave';
+import { createContractFromTx, createContract, interactWrite } from 'smartweave';
 
 /*
     1. Ensure wallet has some AR to make transactions 
@@ -23,7 +23,7 @@ const arweave = Arweave.init({
 const __dirname = path.resolve();
 const mine = () => arweave.api.get("mine");
 
-async function arLocalInit() {
+async function playgroundInit() {
     /***  In this script, I'll need to hardcode a wallet and give it AR.
      * On the website, we'll just use ArConnect
      */
@@ -32,11 +32,11 @@ async function arLocalInit() {
 
 
     // 1. Ensure wallet has some AR to make transactions 
-    // Check balance of wallet. If it's less than 1AR, add 10 more (10AR = 10000000000000 mints)
+    // Check balance of wallet. If it's less than 1AR, add 100 more (100AR = 100000000000000 mints)
     const server = process.env.ARWEAVE_HOST + ':' + process.env.ARWEAVE_PORT;
-    const route = '/mint/' + addr + '/10000000000000';     // Amount in Winstons
+    const route = '/mint/' + addr + '/100000000000000';     // Amount in Winstons
     let balance = await arweave.wallets.getBalance(addr);
-    if (balance < 1000000000000) {
+    if (balance < 10000000000000) {
         const mintRes = await request(server).get(route);
     }
 
@@ -55,35 +55,43 @@ async function arLocalInit() {
     response = await runQuery(query, "Failure on looking up AFTR Vehicles. ");
     numAftrVehicles = response.data.data.transactions.edges.length;
 
+    let contractSource;
+    let initState;
+    let contractTxId = "";
     if (numAftrVehicles > 0) {
         aftrContractSrcId = getContractSourceId(response.data.data.transactions.edges[0].node.id);
     } else {
         // No AFTR Contracts found, load the AFTR Base Contract
         // Create AFTR Protocol base contract
         //let contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
-        let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrSourcePlayground.js'), "utf8");
-        let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitStatePlayground.json'), "utf8");
-        let contractTxId = await createContract(arweave, wallet, contractSource, initState);
+        contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrSourcePlayground.js'), "utf8");
+        initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitStatePlayground.json'), "utf8");
+        contractTxId = await createContract(arweave, wallet, contractSource, initState);
         await mine();
         aftrSourceId = await getContractSourceId(contractTxId);
     }
 
     // 3. Look for Sample AFTR Vehicles, if none found, load them
-    if (numAftrVehicles === 0) {
-        // Create sample vehicles
+    contractTxId = createSampleAftrVehicle(wallet, aftrContractSrcId, "Chillin Treasury", "CHILL", "/tests/contracts/aftrChillinInitState.json");
+    contractTxId = createSampleAftrVehicle(wallet, aftrContractSrcId, "Alquipa", "ALQPA", "/tests/contracts/aftrAlquipaInitState.json");
+    contractTxId = createSampleAftrVehicle(wallet, aftrContractSrcId, "Blue Horizon", "BLUE", "/tests/contracts/aftrBlueHorizonInitState.json");
 
-    } else {
-        // 
+    // 4. Add the user to the Blue Horizon sample contract (if they aren't there).
+    let input = {
+        function: "mint",
+        qty: 100000
+    };
+    // Calls mint function on Blue Horizon contract. If user already has a balance, nothing happens. - Last contactTxId points to Blue Horizon contract.
+    contractTxId = await interactWrite(arweave, wallet, contractTxId, input);
+    await mine();
 
-    }
-    
-    // 4. Add the user to the Blue Horizon sampel contract (if they aren't there).
-
-
-    // 5. Look for sample PSTs (Tag AftrPlayground === "Vint"), Vint is copy of Verto contract
+    // 5. Look for sample PSTs (Tag Aftr-Playground === "Vint"), Vint is copy of Verto contract
     query = `query($cursor: String) {
         transactions(
-            tags: [ { name: "AftrPlayground", values: ["Vint"] } ]
+            tags: [ 
+                { name: "Aftr-Playground", values: ["Vint"] },
+                { name: 'Aftr-Playground-Type', value:  'PST' }
+        ]
             after: $cursor
         )
         { pageInfo { hasNextPage }
@@ -94,18 +102,18 @@ async function arLocalInit() {
     response = await runQuery(query, "Failure looking for Vint PST. ");
 
     if (response.data.data.transactions.edges.length === 0) {
-        // Create Vint PST using Verto Source
-        contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoSource.js'), "utf8");
+        // Vint using Verto's init state and Blue Horizon's source
         initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
-        // Add AftrPlayground tag
-        contractTxId = await createContract(arweave, wallet, contractSource, initState);
+        let vintContractId = await createSampleContract(wallet, aftrSourceId, initState, "PST", "Vint");
         await mine();
-        console.log("Vint Contract ID: " + contractTxId);
     }
 
     query = `query($cursor: String) {
         transactions(
-            tags: [ { name: "AftrPlayground", values: ["ArHD"] } ]
+            tags: [ 
+                { name: "Aftr-Playground", values: ["ArHD"] },
+                { name: 'Aftr-Playground-Type', value:  'PST' }
+            ]
             after: $cursor
         )
         { pageInfo { hasNextPage }
@@ -116,18 +124,17 @@ async function arLocalInit() {
     response = await runQuery(query, "Failure looking for ArHD PST. ");
 
     if (response.data.data.transactions.edges.length === 0) {
-        contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveSource.js'), "utf8");
+        // ArHD using ArDrive's init state and Blue Horizon's source
         initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveInitState.json'), "utf8");
-        contractTxId = await createContract(arweave, wallet, contractSource, initState);
+        let arHdContractId = await createSampleContract(wallet, aftrSourceId, initState, "PST", "ArHD");
         await mine();
-        console.log("ArHD Contract ID: " + contractTxId);
     }
 
-    // 6. Look for images from PSTs and AFTR Market Vehicles (Tags { name: "Content-Type", values: ["image/png"] } && { name: "AftrPlayground", values: ["Vint"] })
-    let tags = [ { name: "AftrPlayground", values: ["Vint"] },  { name: "Content-Type", values: ["image/png"] } ];
+    // 6. Look for images from PSTs and AFTR Market Vehicles (Tags { name: "Content-Type", values: ["image/png"] } && { name: "Aftr-Playground", values: ["Vint"] })
+    let tags = [ { name: "Aftr-Playground", values: ["Vint"] },  { name: "Content-Type", values: ["image/png"] } ];
     let vintLogo = getLogoId("Vint", tags);
 
-    tags = [ { name: "AftrPlayground", values: ["ArHD"] },  { name: "Content-Type", values: ["image/png"] } ];
+    tags = [ { name: "Aftr-Playground", values: ["ArHD"] },  { name: "Content-Type", values: ["image/png"] } ];
     let arHdLogo = getLogoId("ArHD", tags);
 
     const inputLogo = {
@@ -142,74 +149,6 @@ async function arLocalInit() {
         function: "mint",
         qty: 100000
     };
-
-
-/*
-
-    // Create ArDrive contract
-    let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveSource.js'), "utf8");
-    let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveInitState.json'), "utf8");
-    let contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("ArDrive Contract ID: " + contractTxId);
-
-    // Create Verto contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoSource.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("Verto Contract ID: " + contractTxId);
-
-    // Create Increment contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/increment.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/incrementInit.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("Increment Contract ID: " + contractTxId);
-
-    // Create AFTR Protocol base contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("AFTR Contract ID: " + contractTxId);
-
-    const aftrSourceId = await getContractSourceId(contractTxId);
-    
-    // Create some AFTR vehicles for Testing using AFTR's contract source
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrAlquipaInitState.json'), "utf8");
-    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
-    await mine();
-    console.log("AFTR Vehicle - Alquipa: " + contractTxId);
-
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrBlueHorizonInitState.json'), "utf8");
-    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
-    await mine();
-    console.log("AFTR Vehicle - Blue Horizon: " + contractTxId);
-
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrChillinInitState.json'), "utf8");
-    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
-    await mine();
-    console.log("AFTR Vehicle - Chillin: " + contractTxId);
-
-    balance = await arweave.wallets.getBalance(addr);
-    console.log("BALANCE: " + balance);
-
-    //await readTags("k98IUd62AZZQ75Dv9RZpy0WaBkxIwVJQ8IS0FaaLYhc");
-*/
-}
-
-async function readTags(txId) {
-    let tx = await arweave.transactions.get(txId);
-
-    tx.get('tags').forEach(tag => {
-        let key = tag.get('name', {decode: true, string: true});
-        let value = tag.get('value', {decode: true, string: true});
-        console.log(`${key} : ${value}`);    
-    })
 }
 
 async function getContractSourceId(txId) {
@@ -274,16 +213,54 @@ async function getLogoId(name, tags) {
 }
 
 
-async function createAftrVehicle(wallet, aftrId, initState) {
-    let swTags = [
-        { name: 'Protocol', value:  process.env.SMARTWEAVE_TAG_PROTOCOL }
-    ];
+async function createSampleContract(wallet, aftrId, initState, type = "aftr", name) {
+    let swTags = [];
+    if (type === "aftr") {
+        swTags = [
+            { name: 'Protocol', value:  process.env.SMARTWEAVE_TAG_PROTOCOL },
+            { name: 'Aftr-Playground', value:  name }
+        ];
+    } else {
+        swTags = [
+            { name: 'Aftr-Playground', value:  name },
+            { name: 'Aftr-Playground-Type', value:  'PST' }
+        ];
+    }
     let contractTxId = await createContractFromTx(arweave, wallet, aftrId, initState, swTags);
 
     return contractTxId;
 }
 
-arLocalInit();
-//readTags("dqHBM990sXmxx964wPC9_2ZTPeAWLEyka0NuvejYb54");
-// getContractSourceId("dqHBM990sXmxx964wPC9_2ZTPeAWLEyka0NuvejYb54");
+async function createSampleAftrVehicle(wallet, aftrSourceId, name, ticker, initStatePath) {
+    let query = `query($cursor: String) {
+        transactions(
+            tags: [
+                { name: "Protocol", values: ["${ process.env.SMARTWEAVE_TAG_PROTOCOL }"] },
+                { name: "Aftr-Playground", values: ["${ ticker }"] }
+            ]
+            after: $cursor
+        )
+        { pageInfo { hasNextPage }
+            edges { cursor node { id } }
+        }
+    }`;
+    let response = await runQuery(query, "Failure on looking up " + name + " Vehicle. ");
+    let numAftrVehicles = response.data.data.transactions.edges.length;
+
+    if (numAftrVehicles === 0) {
+        // Not found, so create vehicle
+        let initState = fs.readFileSync(path.join(__dirname, initStatePath), "utf8");
+        let contractTxId = await createSampleContract(wallet, aftrSourceId, initState, "aftr", ticker);
+        await mine();
+
+        // Add the logo
+        /*** TODO */
+
+        await mine();
+
+        return contractTxId;
+    }
+}
+
+playgroundInit();
 

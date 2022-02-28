@@ -449,7 +449,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
       
         for (const entry of calls) {
           // Run invocation
-          //@ts-expect-error
           res = (await handle(res, { caller: input.contract, input: entry.input })).state;
           
           // Push invocation to executed invocations
@@ -457,7 +456,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
           res.invocations.push(entry.txID);
         }
       
-        return res;
+        state = res;
     }
 
 
@@ -496,7 +495,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             nextAction.caller = caller;
 
             let result =  await handle(updatedState, nextAction);
-            //@ts-expect-error
             updatedState = result.state;
 
             iteration++;

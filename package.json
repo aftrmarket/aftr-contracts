@@ -8,6 +8,7 @@
     "init": "node -r dotenv/config ./tests/init.js",
     "init-play": "node -r dotenv/config ./tests/init-play.js",
     "test": "node -r dotenv/config ./tests/test.js",
+    "test-script": "node -r dotenv/config ./tests/test-script.js",
     "sw-read": "node -r dotenv/config ./tests/sw-read.js",
     "genkey": "node -r dotenv/config ./tests/genkey.js",
     "test-inc": "node -r dotenv/config ./tests/test-inc.js",

@@ -53,7 +53,7 @@ async function playgroundInit() {
 
     /*** 2. Look for AFTR Base Contract (Find 1 TX ID with Tag "Protocol" === "AFTR-BETA", then get the "Contract-Src" tag value) */
     console.log("2. AFTR Base Contract");
-    let aftrContractSrcId = "";
+    let aftrContractSrcId = "";     // We'll save this in the AFTR Playground rather than use the env var when Creating Vehicles
     let query = `query($cursor: String) {
                     transactions(
                         tags: [ { name: "Protocol", values: ["${ process.env.SMARTWEAVE_TAG_PROTOCOL }"] } ]
@@ -202,6 +202,7 @@ async function getLogoId(wallet, name, ticker, type = "aftr") {
     if (response) {
         logoId = response.data.data.transactions.edges[0].node.id;
     } else {
+        /*** ON THE WEBSITE, USE THE SAME DEPLOY FILE CODE AS IN CREATE VEHICLE */
         // No logo found, so load logo
         let logoSrc = "";
         if (type === "aftr") {

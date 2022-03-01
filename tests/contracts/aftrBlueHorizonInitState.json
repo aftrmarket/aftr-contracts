@@ -9,6 +9,8 @@
       "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
     },
     "vault": {},
+    "invocations": [],
+    "foreignCalls": [],
     "votes": [
       {
         "status": "active",
@@ -50,36 +52,36 @@
     "tokens": [
       {
         "tokenId": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
-        "ticker": "VRT",
+        "ticker": "VINT",
         "source": "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg",
         "txId": "tx2fasdfoijeo8547",
         "balance": 1000,
         "start": 1,
         "lockLength": 0,
         "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
-        "name": "Verto"
+        "name": "Vint"
       },
       {
         "tokenId": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
-        "ticker": "VRT",
+        "ticker": "VINT",
         "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
         "txId": "tx3fasdfoijeo8547",
         "balance": 20000,
         "start": 1,
         "lockLength": 0,
         "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
-        "name": "Verto"
+        "name": "Vint"
       },
       {
         "tokenId": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
-        "ticker": "ARDRIVE",
+        "ticker": "ARHD",
         "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
         "txId": "tx6fasdfoijeo8547",
         "balance": 1000,
         "start": 1,
         "lockLength": 0,
         "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k",
-        "name": "ArDrive"
+        "name": "arHD"
       }
     ],
     "status": "started",

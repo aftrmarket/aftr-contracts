@@ -6,17 +6,19 @@
         "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 10000,
         "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE": 25000
     },
+    "invocations": [],
+    "foreignCalls": [],
     "tokens": [
         {
             "tokenId": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
-            "ticker": "VRT",
+            "ticker": "VINT",
             "source": "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE",
             "txId": "tx2fasdfoijeo8547",
             "balance": 1000,
             "start": 1,
             "lockLength": 10,
             "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
-            "name": "Verto"
+            "name": "Vint"
         },
         {
             "tokenId": "sew_MAXZIgmyEPzzOTkdAca7SQCL9XTCMfxY3KOE5-M",
@@ -31,14 +33,14 @@
         },
         {
             "tokenId": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
-            "ticker": "ARDRIVE",
+            "ticker": "ARHD",
             "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
             "txId": "tx6fasdfoijeo8547",
             "balance": 1000,
             "start": 1,
             "lockLength": 10,
             "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k",
-            "name": "ArDrive"
+            "name": "arHD"
         }
     ],
     "vault": {},

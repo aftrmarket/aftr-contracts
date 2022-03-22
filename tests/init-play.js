@@ -99,16 +99,16 @@ async function playgroundInit() {
     console.log("4. Sample AFTR Vehicles");
 
     let chillContractId = await createSampleAftrVehicle(wallet, aftrContractSrcId, "aftr", "Chillin Treasury", "CHILL", "/tests/contracts/aftrChillinInitState.json");
-    await updateTokensLogos(wallet, chillContractId, logoVint, logoArhd);
-    console.log("CHILL: " + chillContractId);
+    //await updateTokensLogos(wallet, chillContractId, logoVint, logoArhd);
+    //console.log("CHILL: " + chillContractId);
 
     let alqpaContractId = await createSampleAftrVehicle(wallet, aftrContractSrcId, "aftr", "Alquipa", "ALQPA", "/tests/contracts/aftrAlquipaInitState.json");
-    await updateTokensLogos(wallet, alqpaContractId, logoVint, logoArhd);
-    console.log("ALQPA: " + alqpaContractId);
+    //await updateTokensLogos(wallet, alqpaContractId, logoVint, logoArhd);
+    //console.log("ALQPA: " + alqpaContractId);
 
     let blueContractId = await createSampleAftrVehicle(wallet, aftrContractSrcId, "aftr", "Blue Horizon", "BLUE", "/tests/contracts/aftrBlueHorizonInitState.json");
-    await updateTokensLogos(wallet, blueContractId, logoVint, logoArhd);
-    console.log("BLUE: " + blueContractId);
+    //await updateTokensLogos(wallet, blueContractId, logoVint, logoArhd);
+    //console.log("BLUE: " + blueContractId);
 
     /*** 5. Add the user to the Blue Horizon sample contract (if they aren't there). */
     console.log("5. Add user to Blue Horizon Vehicle");
@@ -308,6 +308,9 @@ async function createSampleAftrVehicle(wallet, aftrSourceId, type = "aftr", name
 
         console.log("LOGO ADD for " + name + ": " + res);
         
+        await updateTokensLogos(wallet, contractTxId, logoVint, logoArhd);
+        await mine();
+
         return contractTxId;
     } else {
         return response.data.data.transactions.edges[0].node.id;

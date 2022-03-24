@@ -1,4 +1,4 @@
-
+// contract/vehicle/contract.ts
 var mode = "TEST";
 function ThrowError(msg) {
   if (mode === "TEST") {
@@ -84,24 +84,15 @@ async function handle(state, action) {
     } else if (start < 0 || typeof start !== "number") {
       ThrowError("Invalid Start value.");
     }
-    if (
-      voteType === "mint" ||
-      voteType === "burn" ||
-      voteType === "mintLocked" ||
-      voteType === "addMember" ||
-      voteType === "removeMember"
-    ) {
+    if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
         ThrowError("Error in input.  Recipient not supplied.");
       }
+      recipient = isArweaveAddress(input.recipient);
       if (!qty || !(qty > 0)) {
         ThrowError("Error in input.  Quantity not supplied or is invalid.");
       }
-      if (
-        voteType === "mint" ||
-        voteType === "addMember" ||
-        voteType === "mintLocked"
-      ) {
+      if (voteType === "mint" || voteType === "addMember" || voteType === "mintLocked") {
         let totalTokens = 0;
         for (let wallet in balances) {
           totalTokens += balances[wallet];
@@ -123,7 +114,6 @@ async function handle(state, action) {
           ThrowError("Can't remove creator from balances.");
         }
       }
-      recipient = isArweaveAddress(input.recipient);
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "mintLocked") {
@@ -131,19 +121,9 @@ async function handle(state, action) {
       } else if (voteType === "burn") {
         note = "Burn " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "addMember") {
-        note =
-          "Add new member, " +
-          recipient +
-          ", and mint " +
-          String(qty) +
-          " tokens";
+        note = "Add new member, " + recipient + ", and mint " + String(qty) + " tokens";
       } else if (voteType === "removeMember") {
-        note =
-          "Remove member, " +
-          recipient +
-          ", and burn their " +
-          String(qty) +
-          " tokens";
+        note = "Remove member, " + recipient + ", and burn their " + String(qty) + " tokens";
       }
     } else if (voteType === "set") {
       if (!key || key === "") {
@@ -153,23 +133,14 @@ async function handle(state, action) {
         ThrowError("Invalid Value.");
       }
       let currentValue = String(getStateValue(state, key));
-      note =
-        "Change " +
-        getStateProperty(key) +
-        " from " +
-        currentValue +
-        " to " +
-        String(value);
+      note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
     } else if (voteType === "assetDirective") {
     } else {
       ThrowError("Vote Type not supported.");
     }
     let voteId = String(block) + "txTEST";
     if (mode !== "TEST") {
-      voteId =
-        String(SmartWeave.block.height) +
-        SmartWeave.transaction.id +
-        String(multiIteration);
+      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
     }
     let vote = {
       status: "active",
@@ -180,7 +151,7 @@ async function handle(state, action) {
       nays: 0,
       voted: [],
       start,
-      lockLength,
+      lockLength
     };
     if (recipient !== "") {
       vote.recipient = recipient;
@@ -210,9 +181,7 @@ async function handle(state, action) {
       ThrowError("Vote does not exist.");
     }
     if (!(caller in balances)) {
-      ThrowError(
-        "Caller isn't a member of the vehicle and therefore isn't allowed to vote."
-      );
+      ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
     } else if (state.ownership === "single" && caller !== state.creator) {
       ThrowError("Caller is not the owner of the vehicle.");
     }
@@ -265,10 +234,7 @@ async function handle(state, action) {
   if (input.function === "withdrawal") {
   }
   if (input.function === "deposit") {
-    ContractAssert(
-      input.txId,
-      "The transaction is not valid.  Tokens were not transferred to vehicle."
-    );
+    ContractAssert(input.txId, "The transaction is not valid.  Tokens were not transferred to vehicle.");
     let lockLength = 0;
     if (input.lockLength) {
       lockLength = input.lockLength;
@@ -283,7 +249,7 @@ async function handle(state, action) {
       name: validatedTx.name,
       ticker: validatedTx.ticker,
       logo: validatedTx.logo,
-      lockLength,
+      lockLength
     };
     if (!state.tokens) {
       state["tokens"] = [];
@@ -292,43 +258,24 @@ async function handle(state, action) {
   }
   if (input.function === "invoke") {
     ContractAssert(!!input.invocation, "Missing function invocation.");
-    ContractAssert(
-      typeof input.invocation !== "string",
-      "Invalide invocation."
-    );
+    ContractAssert(typeof input.invocation !== "string", "Invalide invocation.");
     ContractAssert(!!input.foreignContract, "Missing Foreign Contract ID.");
-    ContractAssert(
-      typeof input.foreignContract !== "string",
-      "Invalide Foreign Contract ID."
-    );
-    ContractAssert(
-      typeof input.foreignContract !== "string",
-      "Invalide input."
-    );
+    ContractAssert(typeof input.foreignContract !== "string", "Invalide Foreign Contract ID.");
+    ContractAssert(typeof input.foreignContract !== "string", "Invalide input.");
     state.foreignCalls.push({
       txID: SmartWeave.transaction.id,
       contract: input.foreignContract,
-      input: input.invocation,
+      input: input.invocation
     });
   }
   if (input.function === "readOutbox") {
     ContractAssert(!!input.contract, "Missing contract to invoke");
-    const foreignState = await SmartWeave.contracts.readContractState(
-      input.contract
-    );
-    ContractAssert(
-      !!foreignState.foreignCalls,
-      "Contract is missing support for foreign calls"
-    );
-    const calls = foreignState.foreignCalls.filter(
-      (element) =>
-        element.contract === SmartWeave.contract.id &&
-        !state.invocations.includes(element.txID)
-    );
+    const foreignState = await SmartWeave.contracts.readContractState(input.contract);
+    ContractAssert(!!foreignState.foreignCalls, "Contract is missing support for foreign calls");
+    const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
     let res = state;
     for (const entry of calls) {
-      res = (await handle(res, { caller: input.contract, input: entry.input }))
-        .state;
+      res = (await handle(res, { caller: input.contract, input: entry.input })).state;
       res.invocations.push(entry.txID);
     }
     state = res;
@@ -376,9 +323,7 @@ async function handle(state, action) {
     }
     const multiActions = input.actions;
     if (multiActions.length > multiLimit) {
-      ThrowError(
-        "The Multi-interactions call exceeds the maximum number of interations."
-      );
+      ThrowError("The Multi-interactions call exceeds the maximum number of interations.");
     }
     let iteration = 1;
     let updatedState = state;
@@ -395,19 +340,9 @@ async function handle(state, action) {
     state = updatedState;
   }
   if (Array.isArray(votes)) {
-    const concludedVotes = votes.filter(
-      (vote) =>
-        (block >= vote.start + settings.get("voteLength") ||
-          state.ownership === "single") &&
-        vote.status === "active"
-    );
+    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
     if (concludedVotes.length > 0) {
-      finalizeVotes(
-        state,
-        concludedVotes,
-        settings.get("quorum"),
-        settings.get("support")
-      );
+      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
     }
   }
   if (multiIteration <= 1) {
@@ -451,10 +386,7 @@ function scanVault(vehicle, block) {
 }
 function returnLoanedTokens(vehicle, block) {
   if (Array.isArray(vehicle.tokens)) {
-    const unlockedTokens = vehicle.tokens.filter(
-      (token) =>
-        token.lockLength !== 0 && token.start + token.lockLength <= block
-    );
+    const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
     unlockedTokens.forEach((token) => processWithdrawal(vehicle, token));
   }
 }
@@ -477,9 +409,7 @@ function getStateValue(vehicle, key) {
 }
 function processWithdrawal(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
-    vehicle.tokens = vehicle.tokens.filter(
-      (token) => token.txId !== tokenObj.txId
-    );
+    vehicle.tokens = vehicle.tokens.filter((token) => token.txId !== tokenObj.txId);
   }
 }
 function finalizeVotes(vehicle, concludedVotes, quorum, support) {
@@ -508,7 +438,7 @@ function modifyVehicle(vehicle, vote) {
     let vaultObj = {
       balance: vote.qty,
       start: vote.start,
-      end: vote.start + vote.lockLength,
+      end: vote.start + vote.lockLength
     };
     if (vote.recipient in vehicle.vault) {
       vehicle.vault[vote.recipient].push(vaultObj);
@@ -550,24 +480,14 @@ async function validateTransfer(tokenId, transferTx) {
     block: SmartWeave.block.height,
     name: tokenInfo.name,
     ticker: tokenInfo.ticker,
-    logo: tokenInfo.logo,
+    logo: tokenInfo.logo
   };
   try {
     tx.get("tags").forEach((tag) => {
       if (tag.get("name", { decode: true, string: true }) === "Input") {
-        const input = JSON.parse(
-          tag.get("value", { decode: true, string: true })
-        );
-        ContractAssert(
-          input.function === "transfer",
-          "The interaction is not a transfer"
-        );
-        ContractAssert(
-          input.target ===
-            SmartWeave.transaction.tags.find(({ name }) => name === "Contract")
-              .value,
-          "The target of this transfer is not this contract."
-        );
+        const input = JSON.parse(tag.get("value", { decode: true, string: true }));
+        ContractAssert(input.function === "transfer", "The interaction is not a transfer");
+        ContractAssert(input.target === SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value, "The target of this transfer is not this contract.");
         txObj.qty = input.qty;
       }
     });
@@ -577,28 +497,19 @@ async function validateTransfer(tokenId, transferTx) {
   return txObj;
 }
 async function ensureValidInteraction(contractId, interactionId) {
-  const contractInteractions = await SmartWeave.contracts.readContractState(
-    contractId,
-    void 0,
-    true
-  );
-  ContractAssert(
-    interactionId in contractInteractions.validity,
-    "The interaction is not associated with this contract."
-  );
-  ContractAssert(
-    contractInteractions.validity[interactionId],
-    "The interaction was invalid."
-  );
+  const contractInteractions = await SmartWeave.contracts.readContractState(contractId, void 0, true);
+  ContractAssert(interactionId in contractInteractions.validity, "The interaction is not associated with this contract.");
+  ContractAssert(contractInteractions.validity[interactionId], "The interaction was invalid.");
   const settings = new Map(contractInteractions.state.settings);
   return {
     name: contractInteractions.state.name,
     ticker: contractInteractions.state.ticker,
-    logo: settings.get("communityLogo"),
+    logo: settings.get("communityLogo")
   };
 }
 
 
+/************************** */
 let state = {
     "name": "Blue Horizon",
     "ticker": "BLUE",
@@ -722,13 +633,24 @@ let state = {
     ],
     "treasury": 753.3333333333333
   };
+// let action = {
+//     caller: "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+//     input: {
+//         function: "plygnd-updateTokens",
+//         logoVint: "logoVint",
+//         logoArhd: "logoArhd"
+//     }
+// };
+
 let action = {
     caller: "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
     input: {
-        function: "plygnd-updateTokens",
-        logoVint: "logoVint",
-        logoArhd: "logoArhd"
-    }
+        "function": "propose",
+        "recipient": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8",
+        "qty": 300,
+        "type": "burn",
+        "note": "Burn 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
+      }
 };
 
 let res = await handle(state, action);

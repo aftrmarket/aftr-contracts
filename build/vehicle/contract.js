@@ -88,6 +88,7 @@ async function handle(state, action) {
       if (!input.recipient) {
         ThrowError("Error in input.  Recipient not supplied.");
       }
+      recipient = isArweaveAddress(input.recipient);
       if (!qty || !(qty > 0)) {
         ThrowError("Error in input.  Quantity not supplied or is invalid.");
       }
@@ -113,7 +114,6 @@ async function handle(state, action) {
           ThrowError("Can't remove creator from balances.");
         }
       }
-      recipient = isArweaveAddress(input.recipient);
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "mintLocked") {
@@ -278,7 +278,7 @@ async function handle(state, action) {
       res = (await handle(res, { caller: input.contract, input: entry.input })).state;
       res.invocations.push(entry.txID);
     }
-    return res;
+    state = res;
   }
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {

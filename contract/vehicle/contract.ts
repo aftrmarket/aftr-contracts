@@ -154,6 +154,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (!input.recipient) {
                 ThrowError("Error in input.  Recipient not supplied.");
             }
+            recipient = isArweaveAddress(input.recipient);
             
             if (!(qty) || !(qty > 0)) {
                 ThrowError("Error in input.  Quantity not supplied or is invalid.");
@@ -186,8 +187,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                     ThrowError("Can't remove creator from balances.");
                 }
             }
-
-            recipient = isArweaveAddress(input.recipient);
 
             if (voteType === 'mint') {
                 note = "Mint " + String(qty) + " tokens for " + recipient;

@@ -159,7 +159,7 @@ async function handle(state, action) {
     if (target2 && target2 !== "") {
       vote.target = target2;
     }
-    if (!qty) {
+    if (qty) {
       vote.qty = qty;
     }
     if (key && key !== "") {
@@ -600,7 +600,7 @@ let state = {
     "tipsAr": 100,
     "tipsMisc": 1000,
     "creator": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
-    "ownership": "dao",
+    "ownership": "single",
     "settings": [
       [
         "quorum",
@@ -648,8 +648,8 @@ let action = {
         "function": "propose",
         "recipient": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8",
         "qty": 300,
-        "type": "burn",
-        "note": "Burn 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
+        "type": "mint",
+        "note": "Mint 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
       }
 };
 

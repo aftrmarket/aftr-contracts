@@ -244,7 +244,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (target && target !== '') {
             vote.target = target;
         }
-        if (!qty) {
+        if (qty) {
             vote.qty = qty;
         }
         if (key && key !== '') {
@@ -258,8 +258,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         votes.push(vote);
-
-        //return { state };
     }
 
     if (input.function === "vote") {

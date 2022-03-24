@@ -159,7 +159,7 @@ async function handle(state, action) {
     if (target2 && target2 !== "") {
       vote.target = target2;
     }
-    if (!qty) {
+    if (qty) {
       vote.qty = qty;
     }
     if (key && key !== "") {

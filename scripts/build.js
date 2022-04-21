@@ -1,5 +1,7 @@
-const { build } = require("esbuild");
-const fs = require("fs");
+//const { build } = require("esbuild");
+import { build } from "esbuild";
+//const fs = require("fs");
+import fs from "fs";
 
 (async () => {
   const contractEntries = fs

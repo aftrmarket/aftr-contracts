@@ -44,11 +44,12 @@ async function handle(state, action) {
     const voteType = input.type;
     let note = input.note;
     let target2 = input.target;
-    let qty = input.qty;
+    let qty = +input.qty;
     let key = input.key;
     let value = input.value;
     let lockLength = input.lockLength;
     let start = input.start;
+    let txID = input.txID;
     if (state.ownership === "single") {
       if (caller !== state.creator) {
         ThrowError("Caller is not the creator of the vehicle.");
@@ -135,6 +136,18 @@ async function handle(state, action) {
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
     } else if (voteType === "assetDirective") {
+    } else if (voteType === "withdrawal") {
+      if (!qty || !(qty > 0)) {
+        ThrowError("Error in input.  Quantity not supplied or is invalid.");
+      }
+      if (!input.txID) {
+        ThrowError("Error in input.  No Transaction ID found.");
+      }
+      txID = input.txID;
+      if (!target2) {
+        ThrowError("Error in input.  Target not supplied.");
+      }
+      target2 = isArweaveAddress(target2);
     } else {
       ThrowError("Vote Type not supported.");
     }
@@ -170,6 +183,9 @@ async function handle(state, action) {
     }
     if (note && note !== "") {
       vote.note = note;
+    }
+    if (txID && txID !== "") {
+      vote.txID = txID;
     }
     votes.push(vote);
   }
@@ -232,16 +248,43 @@ async function handle(state, action) {
     }
   }
   if (input.function === "withdrawal") {
+    if (!input.txID) {
+      ThrowError("Missing Transaction ID.");
+    }
+    if (!input.voteId) {
+      ThrowError("Missing Vote ID.");
+    }
+    const tokenIndex = state.tokens.findIndex((token) => token.txID === input.txID);
+    if (tokenIndex !== -1) {
+      if (state.tokens[tokenIndex].withdrawals) {
+        const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex((wd) => wd.voteId === input.voteId);
+        if (wdIndex !== -1) {
+          let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
+          delete invokeInput.voteId;
+          delete invokeInput.txID;
+          delete invokeInput.processed;
+          invoke(state, invokeInput);
+          state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
+          state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter((wd) => wd.voteId !== input.voteId);
+        }
+      } else {
+        ThrowError("Withdrawal not found.");
+      }
+    } else {
+      ThrowError("Invalid withdrawal transaction.");
+    }
   }
   if (input.function === "deposit") {
-    ContractAssert(input.txId, "The transaction is not valid.  Tokens were not transferred to vehicle.");
+    if (!input.txID) {
+      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+    }
     let lockLength = 0;
     if (input.lockLength) {
       lockLength = input.lockLength;
     }
-    const validatedTx = await validateTransfer(input.tokenId, input.txId);
+    const validatedTx = await validateTransfer(input.tokenId, input.txID);
     const txObj = {
-      txId: input.txId,
+      txID: input.txID,
       tokenId: validatedTx.tokenId,
       source: caller,
       balance: validatedTx.qty,
@@ -256,22 +299,17 @@ async function handle(state, action) {
     }
     state.tokens.push(txObj);
   }
-  if (input.function === "invoke") {
-    ContractAssert(!!input.invocation, "Missing function invocation.");
-    ContractAssert(typeof input.invocation !== "string", "Invalide invocation.");
-    ContractAssert(!!input.foreignContract, "Missing Foreign Contract ID.");
-    ContractAssert(typeof input.foreignContract !== "string", "Invalide Foreign Contract ID.");
-    ContractAssert(typeof input.foreignContract !== "string", "Invalide input.");
-    state.foreignCalls.push({
-      txID: SmartWeave.transaction.id,
-      contract: input.foreignContract,
-      input: input.invocation
-    });
-  }
   if (input.function === "readOutbox") {
-    ContractAssert(!!input.contract, "Missing contract to invoke");
+    if (!input.contract) {
+      ThrowError("Missing contract to invoke.");
+    }
+    if (input.contract === SmartWeave.contract.id) {
+      ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
+    }
     const foreignState = await SmartWeave.contracts.readContractState(input.contract);
-    ContractAssert(!!foreignState.foreignCalls, "Contract is missing support for foreign calls");
+    if (!foreignState.foreignCalls) {
+      ThrowError("Contract is missing support for foreign calls");
+    }
     const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
     let res = state;
     for (const entry of calls) {
@@ -372,8 +410,33 @@ function getStateValue(vehicle, key) {
 }
 function processWithdrawal(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
-    vehicle.tokens = vehicle.tokens.filter((token) => token.txId !== tokenObj.txId);
+    vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
   }
+}
+function invoke(state, input) {
+  if (!input.invocation) {
+    ThrowError("Missing function invocation.");
+  }
+  if (!input.invocation.function) {
+    ThrowError("Invalid invocation.");
+  }
+  if (!input.foreignContract) {
+    ThrowError("Missing Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid input.");
+  }
+  if (input.foreignContract === SmartWeave.contract.id) {
+    ThrowError("A Foreign Call cannot call itself.");
+  }
+  state.foreignCalls.push({
+    txID: SmartWeave.transaction.id,
+    contract: input.foreignContract,
+    input: input.invocation
+  });
 }
 function finalizeVotes(vehicle, concludedVotes, quorum, support) {
   concludedVotes.forEach((vote) => {
@@ -419,6 +482,29 @@ function modifyVehicle(vehicle, vote) {
     } else {
       vehicle[vote.key] = vote.value;
     }
+  } else if (vote.type === "withdrawal") {
+    const tokenObj = vehicle.tokens.find((token) => token.txID === vote.txID);
+    let input = {
+      function: "withdrawal",
+      foreignContract: tokenObj.tokenId,
+      invocation: {
+        function: "transfer",
+        target: vote.target,
+        qty: vote.qty
+      }
+    };
+    if (vehicle.ownership === "single") {
+      invoke(vehicle, input);
+      tokenObj.balance -= vote.qty;
+    } else {
+      input["voteId"] = vote.id;
+      input["processed"] = false;
+      input["txID"] = vote.txID;
+      if (!tokenObj.withdrawals) {
+        tokenObj["withdrawals"] = [];
+      }
+      tokenObj.withdrawals.push(input);
+    }
   }
 }
 function updateSetting(vehicle, key, value) {
@@ -449,8 +535,12 @@ async function validateTransfer(tokenId, transferTx) {
     tx.get("tags").forEach((tag) => {
       if (tag.get("name", { decode: true, string: true }) === "Input") {
         const input = JSON.parse(tag.get("value", { decode: true, string: true }));
-        ContractAssert(input.function === "transfer", "The interaction is not a transfer");
-        ContractAssert(input.target === SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value, "The target of this transfer is not this contract.");
+        if (input.function !== "transfer") {
+          ThrowError("The interaction is not a transfer.");
+        }
+        if (input.target !== SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value) {
+          ThrowError("The target of this transfer is not this contract.");
+        }
         txObj.qty = input.qty;
       }
     });
@@ -461,8 +551,12 @@ async function validateTransfer(tokenId, transferTx) {
 }
 async function ensureValidInteraction(contractId, interactionId) {
   const contractInteractions = await SmartWeave.contracts.readContractState(contractId, void 0, true);
-  ContractAssert(interactionId in contractInteractions.validity, "The interaction is not associated with this contract.");
-  ContractAssert(contractInteractions.validity[interactionId], "The interaction was invalid.");
+  if (!(interactionId in contractInteractions.validity)) {
+    ThrowError("The interaction is not associated with this contract.");
+  }
+  if (!contractInteractions.validity[interactionId]) {
+    ThrowError("The interaction was invalid.");
+  }
   const settings = new Map(contractInteractions.state.settings);
   return {
     name: contractInteractions.state.name,

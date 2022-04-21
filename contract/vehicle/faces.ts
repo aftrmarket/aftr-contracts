@@ -53,7 +53,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'invoke' | 'readOutbox' | 'multiInteraction',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'readOutbox' | 'multiInteraction',
     type?: string,
     recipient?: string,
     target?: string,
@@ -72,7 +72,7 @@ export interface TransferInterface {
 
 export interface DepositInterface {
     function: 'deposit',
-    txId: string,
+    txID: string,
     //*** The following information is to confirm the tx */
     source?: string,
     depositBlock?: number,
@@ -89,18 +89,18 @@ export interface DepositInterface {
 // }
 
 export interface TokenInterface {
-    txId: string,
+    txID: string,
     tokenId: string,
     source: string,
     balance: number,
     start: number,   // Stamp when added
     lockLength?: number,    // Planning for temporary loaning of tokens to a vehicle
-
+    withdrawals?: [],       // Array of transfer objects
 }
 
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective';
+    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -114,6 +114,7 @@ export interface VoteInterface {
     voted?: string[];
     start?: number;
     lockLength?: number;
+    txID?: string;
   }
 
   export interface ForeignCallInterface {

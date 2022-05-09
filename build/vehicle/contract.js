@@ -545,7 +545,7 @@ async function validateTransfer(tokenId, transferTx) {
       }
     });
   } catch (err) {
-    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+    ThrowError("Error validating tags during 'deposit'.  " + err);
   }
   return txObj;
 }

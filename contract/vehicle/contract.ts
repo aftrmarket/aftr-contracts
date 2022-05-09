@@ -808,7 +808,9 @@ async function validateTransfer(tokenId: string, transferTx: string) {
             }
         });
     } catch (err) {
-        throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+        //throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+        ThrowError("Error validating tags during 'deposit'.  " + err);
+        //ThrowError("TAGS: " + JSON.stringify(SmartWeave.transaction.tags));
     }
 
     return txObj;

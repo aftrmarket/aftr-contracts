@@ -166,9 +166,29 @@ const depAction = {
 ### Withdrawal
 The withdrawal function utilizes the [Foreign Call Protocol (FCP)](https://www.notion.so/Foreign-Call-Protocol-Specification-61e221e5118a40b980fcaade35a2a718) to transfers tokens out of the vehicle. Arweave PSTs or assets must support the FCP in order for this to work.
 
+In an AFTR Contract, a withdrawal is proposed and then the vehicle contract determines when to process the withdrawal based on a successful vote result (If the vehicle is a single owner vehicle, the vote is passed immediately).  Once a withdrawal vote is passed, then the AFTR contract calls an invoke function within the contract to initiate the invoke stage of the FCP.
+
+Next, another interaction needs to be sent to the AFTR contract to read its outbox object to complete the 2nd stage of the FCP.
+
 #### Sample Withdrawal Action
 ```typescript
-TODO
+const wdAction = { 
+    input: {
+        function: "propose",
+        type: "withdrawal",
+        txID: "<TX IN TOKEN OBJECT>",
+        target: "<ADDR OF WALLET BEING TRANSFERRED TO>",
+        qty: 10,
+        note: "<DESCRIPTION OF WITHDRAWAL>"
+    }
+};
+
+const readOutboxAction = {
+    input: {
+        function: "readOutbox",
+        contract: "<AFTR VEHICLE CONTRACT ID>"
+    }
+};
 ```
 
 ### Propose

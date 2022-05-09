@@ -1,6 +1,8 @@
 {
-    "name": "Verto",
-    "ticker": "VRT",
+    "name": "Vint",
+    "ticker": "VINT",
+    "invocations": [],
+    "foreignCalls": [],
     "balances": {
       "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 102000,
       "aLemOhg9OGovn-0o4cOCbueiHT9VgdYnpJpq7NgMA1A": 177871612,
@@ -8,7 +10,7 @@
       "WNeEQzI24ZKWslZkQT573JZ8bhatwDVx6XVDrrGbUyk": 217829,
       "BPr7vrFduuQqqVMu_tftxsScTKUq9ke0rx4q5C9ieQU": 0,
       "pvPWBZ8A5HLpGSEfhEmK1A3PfMgB_an8vVS6L14Hsls": 0,
-      "GVgzvPOB0aZfsHr9HR1ljlfwTE7193dI0bnoWv_vwwA": 99095,
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 99095,
       "6xZ19AHfJqPBbKFfcV5feWmpHVopHVUA1RQ48S9O_pM": 366532,
       "L4Kwxs0yEjAC1tKjH9J3V9Zvs-u4e2LUw3uugMAeW_Y": 1736854,
       "C6nBlkd7pKRxPiUk1AaGeCrup7XiVQow40NO6c9RDGg": 1801843,
@@ -1960,10 +1962,6 @@
       [
         "communityLogo",
         "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg"
-      ],
-      [
-        "evolve",
-        "40tPvYdnGiSpwgnqrS2xJ2dqSvA6h8K11HjJxMs1cbI"
       ]
     ]
   }

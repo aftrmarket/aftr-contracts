@@ -5,19 +5,30 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "init": "node -r dotenv/config ./tests/init.js",
+    "init-play": "node -r dotenv/config ./tests/init-play.js",
+    "fcp": "node -r dotenv/config ./tests/fcp.js",
+    "fcp-test": "node -r dotenv/config ./tests/fcp-test.js",
     "test": "node -r dotenv/config ./tests/test.js",
+    "test-script": "node -r dotenv/config ./tests/test-script.js",
+    "test-create": "node -r dotenv/config ./tests/test-create.js",
+    "sw-read": "node -r dotenv/config ./tests/sw-read.js",
+    "genkey": "node -r dotenv/config ./tests/genkey.js",
+    "test-inc": "node -r dotenv/config ./tests/test-inc.js",
     "build-contract": "node ./scripts/build.js",
-    "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js"
+    "build-contract-tests": "node ./scripts/build-tests.js",
+    "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
+    "tests": "node ./build/vehicle/contract-new-tests.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "arlocal": "^1.1.13",
+    "@three-em/node": "^0.2.11",
+    "arlocal": "^1.1.16",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
-    "redstone-smartweave": "^0.3.10-alpha.19",
     "smartweave": "^0.4.46"
   },
   "devDependencies": {

@@ -10,20 +10,23 @@ export interface StateInterface {
     pricePerSeat?: number,                           // Price per seat is customizable
     minLength?: number,                              // Minimum amount of blocks required to lease a seat
     maxLength?: number,                              // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
-    ownership: 'single' | 'dao',
+    ownership: string,
     votingSystem?: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
+    tipsAr?: number,
+    tipsMisc?: number,
+    treasury?: number,
     vault: {
         [key: string]: [{
             balance: number, // Positive integer
             end: number, // At what block the lock ends.
             start: number // At what block the lock starts.
         }]
-    },
-    votes: VoteInterface[],
+    }  | {},
+    votes: VoteInterface[]  | [],
     tokens?: [
         TokenInterface,
-    ],
+    ] | [],
     leases?: {
         [lessee: string]: [                           // lessee wallet address
             {
@@ -32,6 +35,8 @@ export interface StateInterface {
             }
         ],
     },
+    invocations: string[] | [],                     // Required for Foreign Call Protocol (FCP)
+    foreignCalls: ForeignCallInterface[] | [],      // Required for Foreign Call Protocol (FCP)
     settings: Map<string, any>
 }
 
@@ -48,10 +53,15 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'lease' | 'withdrawal',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'readOutbox' | 'multiInteraction',
+    type?: string,
+    recipient?: string,
     target?: string,
     qty?: number,
-    multi?: boolean
+    key?: string,
+    value?: string,
+    note?: string,
+    actions?: InputInterface[]
 }
 
 export interface TransferInterface {
@@ -62,7 +72,7 @@ export interface TransferInterface {
 
 export interface DepositInterface {
     function: 'deposit',
-    txId: string,
+    txID: string,
     //*** The following information is to confirm the tx */
     source?: string,
     depositBlock?: number,
@@ -79,18 +89,18 @@ export interface DepositInterface {
 // }
 
 export interface TokenInterface {
-    txId: string,
+    txID: string,
     tokenId: string,
     source: string,
     balance: number,
     start: number,   // Stamp when added
     lockLength?: number,    // Planning for temporary loaning of tokens to a vehicle
-
+    withdrawals?: [],       // Array of transfer objects
 }
 
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective';
+    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -104,4 +114,11 @@ export interface VoteInterface {
     voted?: string[];
     start?: number;
     lockLength?: number;
+    txID?: string;
+  }
+
+  export interface ForeignCallInterface {
+    txID: string,
+    contract: string,
+    input: InputInterface
   }

@@ -9,7 +9,7 @@ function ThrowError(msg) {
 }
 var multiLimit = 1e3;
 var multiIteration = 0;
-async function handle(state, action) {
+export async function handle(state, action) {
   const balances = state.balances;
   const input = action.input;
   const caller = action.caller;
@@ -318,6 +318,53 @@ async function handle(state, action) {
     }
     state = res;
   }
+
+/*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
+    /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
+    if (input.function === 'plygnd-mint') {
+        if (!input.qty) {
+            ThrowError("Missing qty.");
+        }
+        if (!(caller in state.balances)) {
+            balances[caller] = input.qty;
+        }
+    }
+    /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
+    if (input.function === "plygnd-addLogo") {
+        if (!input.logo) {
+            ThrowError("Missing logo");
+        }
+
+        // Add logo
+        updateSetting(state, "communityLogo", input.logo);
+    }
+
+    /*** ADDED UPDATETOKENS FUNCTION TO UPDATE THE TOKEN OBJECT'S LOGOS ON INIT - NOT FOR PRODUCTION */
+    if (input.function === 'plygnd-updateTokens') {
+        if (!input.logoVint) {
+            ThrowError("Missing Vint logo");
+        }
+
+        if (!input.logoArhd) {
+            ThrowError("Missing arHD logo");
+        }
+
+        // Update logo in tokens[] if aftr vehicle
+        if (state.tokens) {
+            // Find tokens that == ticker and update their logos
+            const updatedTokens = state.tokens.filter( (token) => (token.ticker === "VINT" || token.ticker === "ARHD"));
+            updatedTokens.forEach((token) => {
+                if (token.ticker === "VINT") {
+                    token.logo = input.logoVint;
+                } else if (token.ticker === "ARHD") {
+                    token.logo = input.logoArhd;
+                }
+            });
+        }
+    }
+/*** PLAYGROUND FUNCTIONS END */
+
+
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
       ThrowError("Invalid Multi-interaction input.");
@@ -545,7 +592,7 @@ async function validateTransfer(tokenId, transferTx) {
       }
     });
   } catch (err) {
-    ThrowError("Error validating tags during 'deposit'.  " + err);
+    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
   }
   return txObj;
 }

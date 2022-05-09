@@ -24,6 +24,7 @@ export function handle(state, action) {
         throw new ContractError(`Caller balance not high enough to send ${qty} token(s)!`);
       }
       balances[caller] -= qty;
+
       if (target in balances) {
         balances[target] += qty;
       } else {
@@ -379,5 +380,53 @@ export function handle(state, action) {
       }
       return {result: {target, role}};
     }
+
+    /*** ADDED FOREIGN CALL PROTOCOL FOR TESTING */
+
+    if (input.function === "invoke") {
+        ContractAssert(!!input.invocation, "Missing function invocation.");
+        ContractAssert(typeof input.invocation !== "string", "Invalide invocation.");
+        ContractAssert(!!input.foreignContract, "Missing Foreign Contract ID.");
+        ContractAssert(typeof input.foreignContract !== "string", "Invalide Foreign Contract ID.");
+        ContractAssert(typeof input.foreignContract !== "string", "Invalide input.");
+        state.foreignCalls.push({
+          txID: SmartWeave.transaction.id,
+          contract: input.foreignContract,
+          input: input.invocation
+        });
+    }
+      if (input.function === "readOutbox") {
+        ContractAssert(!!input.contract, "Missing contract to invoke");
+        const foreignState = await SmartWeave.contracts.readContractState(input.contract);
+        ContractAssert(!!foreignState.foreignCalls, "Contract is missing support for foreign calls");
+        const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
+        let res = state;
+        for (const entry of calls) {
+          res = (await handle(res, { caller: input.contract, input: entry.input })).state;
+          res.invocations.push(entry.txID);
+        }
+        return res;
+    }
+
+    /*** END FCP */
+
+    /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
+    if (input.function === 'mint') {
+        ContractAssert(!!input.qty, "Missing qty");
+        if (!(caller in state.balances)) {
+            balances[caller] = input.qty;
+        }
+        return {state};
+    }
+    /*** END MINT FUNCTION */
+
+    /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
+    if (input.function === 'addLogo') {
+        ContractAssert(!!input.logo, "Missing logo");
+        settings.set("communityLogo", input.logo);
+        return {state};
+    }
+    /*** END ADDLOGO FUNCTION */
+
     throw new ContractError(`No function supplied or function not recognised: "${input.function}"`);
   }

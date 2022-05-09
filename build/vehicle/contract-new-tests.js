@@ -1,5 +1,5 @@
 // contract/vehicle/contract.ts
-var mode = "PROD";
+var mode = "TEST";
 function ThrowError(msg) {
   if (mode === "TEST") {
     throw "ERROR: " + msg;
@@ -15,8 +15,6 @@ async function handle(state, action) {
   const caller = action.caller;
   const settings = new Map(state.settings);
   const votes = state.votes;
-  let target = "";
-  let balance = 0;
   if (typeof input.iteration !== "undefined") {
     if (isNaN(input.iteration)) {
       ThrowError("Invalid value for iteration.");
@@ -30,26 +28,40 @@ async function handle(state, action) {
   } else {
     block = +SmartWeave.block.height;
   }
+  if (Array.isArray(votes)) {
+    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
+    if (concludedVotes.length > 0) {
+      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
+    }
+  }
+  if (multiIteration <= 1) {
+    if (state.vault) {
+      scanVault(state, block);
+    }
+    if (state.tokens) {
+      returnLoanedTokens(state, block);
+    }
+  }
   if (input.function === "balance") {
-    target = isArweaveAddress(input.target || caller);
+    const target = isArweaveAddress(input.target || caller);
     if (typeof target !== "string") {
       ThrowError("Must specificy target to get balance for.");
     }
-    balance = 0;
+    let balance = 0;
     if (target in balances) {
       balance = balances[target];
     }
+    return { result: { target, balance } };
   }
   if (input.function === "propose") {
     const voteType = input.type;
     let note = input.note;
-    let target2 = input.target;
-    let qty = +input.qty;
+    let target = input.target;
+    let qty = input.qty;
     let key = input.key;
     let value = input.value;
     let lockLength = input.lockLength;
     let start = input.start;
-    let txID = input.txID;
     if (state.ownership === "single") {
       if (caller !== state.creator) {
         ThrowError("Caller is not the creator of the vehicle.");
@@ -73,23 +85,10 @@ async function handle(state, action) {
       ThrowError("Invalid voting system.");
     }
     let recipient = "";
-    if (state.ownership === "single") {
-      lockLength = 0;
-    } else if (!lockLength || typeof lockLength === "undefined") {
-      lockLength = settings.get("voteLength");
-    } else if (lockLength < 0) {
-      ThrowError("Invalid Lock Length.");
-    }
-    if (!start || typeof start === "undefined") {
-      start = block;
-    } else if (start < 0 || typeof start !== "number") {
-      ThrowError("Invalid Start value.");
-    }
     if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
         ThrowError("Error in input.  Recipient not supplied.");
       }
-      recipient = isArweaveAddress(input.recipient);
       if (!qty || !(qty > 0)) {
         ThrowError("Error in input.  Quantity not supplied or is invalid.");
       }
@@ -115,6 +114,17 @@ async function handle(state, action) {
           ThrowError("Can't remove creator from balances.");
         }
       }
+      if (!lockLength) {
+        lockLength = 0;
+      } else if (lockLength < settings.get("lockMinLength") || lockLength > settings.get("lockMaxLength")) {
+        ThrowError("Invalid Lock Length.");
+      }
+      if (!start) {
+        start = block;
+      } else if (start < 0) {
+        ThrowError("Invalid Start value.");
+      }
+      recipient = isArweaveAddress(input.recipient);
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "mintLocked") {
@@ -136,24 +146,12 @@ async function handle(state, action) {
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
     } else if (voteType === "assetDirective") {
-    } else if (voteType === "withdrawal") {
-      if (!qty || !(qty > 0)) {
-        ThrowError("Error in input.  Quantity not supplied or is invalid.");
-      }
-      if (!input.txID) {
-        ThrowError("Error in input.  No Transaction ID found.");
-      }
-      txID = input.txID;
-      if (!target2) {
-        ThrowError("Error in input.  Target not supplied.");
-      }
-      target2 = isArweaveAddress(target2);
     } else {
       ThrowError("Vote Type not supported.");
     }
     let voteId = String(block) + "txTEST";
     if (mode !== "TEST") {
-      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
+      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id;
     }
     let vote = {
       status: "active",
@@ -163,16 +161,15 @@ async function handle(state, action) {
       yays: 0,
       nays: 0,
       voted: [],
-      start,
-      lockLength
+      start
     };
     if (recipient !== "") {
       vote.recipient = recipient;
     }
-    if (target2 && target2 !== "") {
-      vote.target = target2;
+    if (target && target !== "") {
+      vote.target = target;
     }
-    if (qty) {
+    if (!qty) {
       vote.qty = qty;
     }
     if (key && key !== "") {
@@ -184,10 +181,8 @@ async function handle(state, action) {
     if (note && note !== "") {
       vote.note = note;
     }
-    if (txID && txID !== "") {
-      vote.txID = txID;
-    }
     votes.push(vote);
+    return { state };
   }
   if (input.function === "vote") {
     const voteId = input.voteId;
@@ -219,12 +214,13 @@ async function handle(state, action) {
       ThrowError("Invalid vote cast.");
     }
     vote.voted.push(caller);
+    return { state };
   }
   if (input.function === "transfer") {
-    const target2 = input.target;
+    const target = input.target;
     const qty = input.qty;
     const callerAddress = isArweaveAddress(caller);
-    const targetAddress = isArweaveAddress(target2);
+    const targetAddress = isArweaveAddress(target);
     if (!Number.isInteger(qty)) {
       ThrowError('Invalid value for "qty". Must be an integer.');
     }
@@ -246,77 +242,38 @@ async function handle(state, action) {
     } else {
       balances[targetAddress] = qty;
     }
+    return { state };
   }
   if (input.function === "withdrawal") {
-    if (!input.txID) {
-      ThrowError("Missing Transaction ID.");
-    }
-    if (!input.voteId) {
-      ThrowError("Missing Vote ID.");
-    }
-    const tokenIndex = state.tokens.findIndex((token) => token.txID === input.txID);
-    if (tokenIndex !== -1) {
-      if (state.tokens[tokenIndex].withdrawals) {
-        const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex((wd) => wd.voteId === input.voteId);
-        if (wdIndex !== -1) {
-          let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
-          delete invokeInput.voteId;
-          delete invokeInput.txID;
-          delete invokeInput.processed;
-          invoke(state, invokeInput);
-          state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
-          state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter((wd) => wd.voteId !== input.voteId);
-        }
-      } else {
-        ThrowError("Withdrawal not found.");
-      }
-    } else {
-      ThrowError("Invalid withdrawal transaction.");
-    }
   }
   if (input.function === "deposit") {
-    if (!input.txID) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
-    }
+    const txId = input.txId;
+    const source = caller;
+    const target = input.target;
+    const qty = input.qty;
+    const tokenId = input.tokenId;
+    const start = input.start;
     let lockLength = 0;
     if (input.lockLength) {
       lockLength = input.lockLength;
     }
-    const validatedTx = await validateTransfer(input.tokenId, input.txID);
     const txObj = {
-      txID: input.txID,
-      tokenId: validatedTx.tokenId,
-      source: caller,
-      balance: validatedTx.qty,
-      start: validatedTx.block,
-      name: validatedTx.name,
-      ticker: validatedTx.ticker,
-      logo: validatedTx.logo,
+      txId,
+      tokenId,
+      source,
+      target,
+      balance: qty,
+      start,
       lockLength
     };
+    if (!txId) {
+      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+    }
     if (!state.tokens) {
       state["tokens"] = [];
     }
     state.tokens.push(txObj);
-  }
-  if (input.function === "readOutbox") {
-    if (!input.contract) {
-      ThrowError("Missing contract to invoke.");
-    }
-    if (input.contract === SmartWeave.contract.id) {
-      ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
-    }
-    const foreignState = await SmartWeave.contracts.readContractState(input.contract);
-    if (!foreignState.foreignCalls) {
-      ThrowError("Contract is missing support for foreign calls");
-    }
-    const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
-    let res = state;
-    for (const entry of calls) {
-      res = (await handle(res, { caller: input.contract, input: entry.input })).state;
-      res.invocations.push(entry.txID);
-    }
-    state = res;
+    return { state };
   }
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
@@ -327,36 +284,14 @@ async function handle(state, action) {
       ThrowError("The Multi-interactions call exceeds the maximum number of interations.");
     }
     let iteration = 1;
-    let updatedState = state;
     for (let nextAction of multiActions) {
       nextAction.input.iteration = iteration;
       if (nextAction.input.function === "multiInteraction") {
         ThrowError("Nested Multi-interactions are not allowed.");
       }
-      nextAction.caller = caller;
-      let result = await handle(updatedState, nextAction);
-      updatedState = result.state;
+      let result = await handle(state, nextAction);
       iteration++;
     }
-    state = updatedState;
-  }
-  if (Array.isArray(votes)) {
-    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
-    if (concludedVotes.length > 0) {
-      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
-    }
-  }
-  if (multiIteration <= 1) {
-    if (state.vault) {
-      scanVault(state, block);
-    }
-    if (state.tokens) {
-      returnLoanedTokens(state, block);
-    }
-  }
-  if (input.function === "balance") {
-    return { result: { target, balance } };
-  } else {
     return { state };
   }
 }
@@ -387,7 +322,7 @@ function scanVault(vehicle, block) {
 }
 function returnLoanedTokens(vehicle, block) {
   if (Array.isArray(vehicle.tokens)) {
-    const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
+    const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength >= block);
     unlockedTokens.forEach((token) => processWithdrawal(vehicle, token));
   }
 }
@@ -410,33 +345,8 @@ function getStateValue(vehicle, key) {
 }
 function processWithdrawal(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
-    vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
+    vehicle.tokens = vehicle.tokens.filter((token) => token.txId !== tokenObj.txId);
   }
-}
-function invoke(state, input) {
-  if (!input.invocation) {
-    ThrowError("Missing function invocation.");
-  }
-  if (!input.invocation.function) {
-    ThrowError("Invalid invocation.");
-  }
-  if (!input.foreignContract) {
-    ThrowError("Missing Foreign Contract ID.");
-  }
-  if (typeof input.foreignContract !== "string") {
-    ThrowError("Invalid Foreign Contract ID.");
-  }
-  if (typeof input.foreignContract !== "string") {
-    ThrowError("Invalid input.");
-  }
-  if (input.foreignContract === SmartWeave.contract.id) {
-    ThrowError("A Foreign Call cannot call itself.");
-  }
-  state.foreignCalls.push({
-    txID: SmartWeave.transaction.id,
-    contract: input.foreignContract,
-    input: input.invocation
-  });
 }
 function finalizeVotes(vehicle, concludedVotes, quorum, support) {
   concludedVotes.forEach((vote) => {
@@ -482,29 +392,6 @@ function modifyVehicle(vehicle, vote) {
     } else {
       vehicle[vote.key] = vote.value;
     }
-  } else if (vote.type === "withdrawal") {
-    const tokenObj = vehicle.tokens.find((token) => token.txID === vote.txID);
-    let input = {
-      function: "withdrawal",
-      foreignContract: tokenObj.tokenId,
-      invocation: {
-        function: "transfer",
-        target: vote.target,
-        qty: vote.qty
-      }
-    };
-    if (vehicle.ownership === "single") {
-      invoke(vehicle, input);
-      tokenObj.balance -= vote.qty;
-    } else {
-      input["voteId"] = vote.id;
-      input["processed"] = false;
-      input["txID"] = vote.txID;
-      if (!tokenObj.withdrawals) {
-        tokenObj["withdrawals"] = [];
-      }
-      tokenObj.withdrawals.push(input);
-    }
   }
 }
 function updateSetting(vehicle, key, value) {
@@ -520,47 +407,107 @@ function updateSetting(vehicle, key, value) {
     vehicle.settings.push([key, value]);
   }
 }
-async function validateTransfer(tokenId, transferTx) {
-  const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
-  const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
-  let txObj = {
-    tokenId,
-    qty: 0,
-    block: SmartWeave.block.height,
-    name: tokenInfo.name,
-    ticker: tokenInfo.ticker,
-    logo: tokenInfo.logo
+
+// contract/vehicle/contract-new-tests.ts
+function testPropose() {
+  const action = {
+    "input": {
+      "function": "propose",
+      "type": "set",
+      "key": "ownership",
+      "value": "dao",
+      "recipient": "",
+      "target": "",
+      "qty": 0,
+      "note": ""
+    },
+    caller: "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I"
+  };
+  const state = {
+    "name": "Blue Horizon",
+    "ticker": "AFTR-BLUE",
+    "balances": {
+      "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1e3,
+      "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2e3,
+      "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ": 5e3,
+      "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 1e4
+    },
+    "vault": {},
+    "votes": [],
+    "tokens": [
+      {
+        "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+        "ticker": "VRT",
+        "source": "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg",
+        "txId": "tx2fasdfoijeo8547",
+        "balance": 1e3,
+        "depositBlock": 646429,
+        "lockLength": 10,
+        "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
+        "name": "Verto",
+        "total": 20
+      },
+      {
+        "id": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
+        "ticker": "VRT",
+        "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+        "txId": "tx3fasdfoijeo8547",
+        "balance": 2e4,
+        "depositBlock": 646429,
+        "lockLength": 100,
+        "logo": "9CYPS85KChE_zQxNLi2y5r2FLG-YE6HiphYYTlgtrtg",
+        "name": "Verto",
+        "total": 400
+      },
+      {
+        "id": "-8A6RexFkpfWwuyVO98wzSFZh0d6VJuI-buTJvlwOJQ",
+        "ticker": "ARDRIVE",
+        "source": "CH_52MZm60ewLdc-HGGM1DEk7hljT37Gf45JT5CoHUQ",
+        "txId": "tx6fasdfoijeo8547",
+        "balance": 1e3,
+        "depositBlock": 646429,
+        "lockLength": 10,
+        "logo": "tN4vheZxrAIjqCfbs3MDdWTXg8a_57JUNyoqA4uwr1k",
+        "name": "ArDrive",
+        "total": 333.3333333333333
+      }
+    ],
+    "status": "started",
+    "tipsAr": 100,
+    "tipsMisc": 1e3,
+    "creator": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "ownership": "single",
+    "settings": [
+      [
+        "quorum",
+        0.5
+      ],
+      [
+        "voteLength",
+        2e3
+      ],
+      [
+        "lockMinLength",
+        100
+      ],
+      [
+        "lockMaxLength",
+        1e4
+      ],
+      [
+        "communityLogo",
+        "KM66oKFLF60UrrOgSx5mb90gUd2v4i0T9RIcK9mfUiA"
+      ]
+    ],
+    "treasury": 753.3333333333333
   };
   try {
-    tx.get("tags").forEach((tag) => {
-      if (tag.get("name", { decode: true, string: true }) === "Input") {
-        const input = JSON.parse(tag.get("value", { decode: true, string: true }));
-        if (input.function !== "transfer") {
-          ThrowError("The interaction is not a transfer.");
-        }
-        if (input.target !== SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value) {
-          ThrowError("The target of this transfer is not this contract.");
-        }
-        txObj.qty = input.qty;
-      }
-    });
+    const res = handle(state, action);
+    console.log(res);
+    console.log(JSON.stringify(res));
   } catch (err) {
-    ThrowError("Error validating tags during 'deposit'.  " + err);
+    console.log(err);
   }
-  return txObj;
 }
-async function ensureValidInteraction(contractId, interactionId) {
-  const contractInteractions = await SmartWeave.contracts.readContractState(contractId, void 0, true);
-  if (!(interactionId in contractInteractions.validity)) {
-    ThrowError("The interaction is not associated with this contract.");
-  }
-  if (!contractInteractions.validity[interactionId]) {
-    ThrowError("The interaction was invalid.");
-  }
-  const settings = new Map(contractInteractions.state.settings);
-  return {
-    name: contractInteractions.state.name,
-    ticker: contractInteractions.state.ticker,
-    logo: settings.get("communityLogo")
-  };
-}
+testPropose();

@@ -9,7 +9,7 @@ function ThrowError(msg) {
 }
 var multiLimit = 1e3;
 var multiIteration = 0;
-async function handle(state, action) {
+export async function handle(state, action) {
   const balances = state.balances;
   const input = action.input;
   const caller = action.caller;

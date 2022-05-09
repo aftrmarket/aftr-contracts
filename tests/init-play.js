@@ -289,7 +289,7 @@ async function createSampleAftrVehicle(wallet, aftrSourceId, type = "aftr", name
         numAftrVehicles = response.data.data.transactions.edges.length;
     }
     
-    if (numAftrVehicles === 0) {
+    //if (numAftrVehicles === 0) {
         // Not found, so create vehicle
         let initState = fs.readFileSync(path.join(__dirname, initStatePath), "utf8");
         let contractTxId = await createSampleContract(wallet, aftrSourceId, initState, type, ticker);
@@ -312,9 +312,9 @@ async function createSampleAftrVehicle(wallet, aftrSourceId, type = "aftr", name
         await mine();
 
         return contractTxId;
-    } else {
-        return response.data.data.transactions.edges[0].node.id;
-    }
+    // } else {
+    //     return response.data.data.transactions.edges[0].node.id;
+    // }
 }
 
 async function updateTokensLogos(wallet, contractId, logoVint, logoArhd) {

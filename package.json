@@ -7,6 +7,8 @@
   "scripts": {
     "init": "node -r dotenv/config ./tests/init.js",
     "init-play": "node -r dotenv/config ./tests/init-play.js",
+    "fcp": "node -r dotenv/config ./tests/fcp.js",
+    "fcp-test": "node -r dotenv/config ./tests/fcp-test.js",
     "test": "node -r dotenv/config ./tests/test.js",
     "test-script": "node -r dotenv/config ./tests/test-script.js",
     "test-create": "node -r dotenv/config ./tests/test-create.js",
@@ -21,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@three-em/js": "^0.2.0",
+    "@three-em/node": "^0.2.11",
     "arlocal": "^1.1.16",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",

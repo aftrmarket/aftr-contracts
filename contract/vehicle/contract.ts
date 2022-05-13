@@ -70,7 +70,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (target in balances) {
             balance = balances[target];
         }
-        //return { result: { target, balance } };
     }
 
     /*** FUNCTIONALITY NOT YET IMPLEMENTED
@@ -320,7 +319,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         vote.voted.push(caller);
-        //return { state };
     }
     /******* END VOTING FUNCTIONS */
 
@@ -345,14 +343,15 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (balances[callerAddress] < qty) {
             ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
         }
+        if (SmartWeave.contract.id === target) {
+            ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+        }
         balances[callerAddress] -= qty;
         if (targetAddress in balances) {
             balances[targetAddress] += qty;
         } else {
             balances[targetAddress] = qty;
         }
-        //return { state };
-
     }
 
     if (input.function === "withdrawal") {
@@ -399,7 +398,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Transfer tokens into vehicle
         
         if (!input.txID) {
-            ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+            ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+        }
+        if(!input.tokenId) {
+            ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+        }
+        if(input.tokenId === SmartWeave.contract.id) {
+            ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
         }
 
         let lockLength = 0;

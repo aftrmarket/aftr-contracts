@@ -9,7 +9,7 @@ function ThrowError(msg) {
 }
 var multiLimit = 1e3;
 var multiIteration = 0;
-async function handle(state, action) {
+export async function handle(state, action) {
   const balances = state.balances;
   const input = action.input;
   const caller = action.caller;
@@ -240,9 +240,6 @@ async function handle(state, action) {
     if (balances[callerAddress] < qty) {
       ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
     }
-    if (SmartWeave.contract.id === target2) {
-      ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
-    }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
       balances[targetAddress] += qty;
@@ -279,13 +276,7 @@ async function handle(state, action) {
   }
   if (input.function === "deposit") {
     if (!input.txID) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
-    }
-    if (!input.tokenId) {
-      ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
-    }
-    if(input.tokenId === SmartWeave.contract.id) {
-        ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
+      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
     }
     let lockLength = 0;
     if (input.lockLength) {
@@ -372,6 +363,7 @@ async function handle(state, action) {
         }
     }
 /*** PLAYGROUND FUNCTIONS END */
+
 
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
@@ -600,7 +592,7 @@ async function validateTransfer(tokenId, transferTx) {
       }
     });
   } catch (err) {
-    ThrowError("Error validating tags during 'deposit'.  " + err);
+    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
   }
   return txObj;
 }

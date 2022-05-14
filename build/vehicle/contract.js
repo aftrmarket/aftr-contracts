@@ -115,6 +115,11 @@ async function handle(state, action) {
           ThrowError("Can't remove creator from balances.");
         }
       }
+      if (voteType === "addMember") {
+        if (recipient === SmartWeave.contract.id) {
+          ThrowError("Can't add the vehicle as a member.");
+        }
+      }
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "mintLocked") {
@@ -198,6 +203,8 @@ async function handle(state, action) {
     }
     if (!(caller in balances)) {
       ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+    } else if (balances[caller] == 0) {
+      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     } else if (state.ownership === "single" && caller !== state.creator) {
       ThrowError("Caller is not the owner of the vehicle.");
     }
@@ -242,6 +249,9 @@ async function handle(state, action) {
     }
     if (SmartWeave.contract.id === target2) {
       ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+    }
+    if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
+      ThrowError("Invalid transfer because the creator's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {

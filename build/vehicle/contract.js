@@ -58,7 +58,7 @@ async function handle(state, action) {
     if (!(caller in balances) || !(balances[caller] > 0)) {
       ThrowError("Caller is not allowed to propose vote.");
     }
-    let votingSystem = "equal";
+    let votingSystem = "weighted";
     let totalWeight = 0;
     if (state.votingSystem) {
       votingSystem = state.votingSystem;

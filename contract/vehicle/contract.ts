@@ -600,7 +600,11 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === 'balance') {
-        return { result: { target, balance } };
+        let vaultBal = 0;
+        for (let bal of state.vault[caller]) {
+            vaultBal += bal.balance;
+        }
+        return { result: { target, balance, vaultBal } };
     } else {
         return { state };
     }

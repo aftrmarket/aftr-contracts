@@ -117,6 +117,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Determine weight of a vote
         // Default is weighted meaning votes are weighted by balance
         // If equal weighting:  all votes counted equally
+        // Make sure to count the members in the balances object and the vault objects
         // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
         let votingSystem = 'weighted';
         let totalWeight = 0;
@@ -124,10 +125,26 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             votingSystem = state.votingSystem;
         }
         if (votingSystem === 'equal') {
+            // First, get all members in balances object
             totalWeight = Object.keys(balances).length;
+        
+            // Next, get any members that are in the vault, but not in the balances object
+            for (let addr in state.vault) {
+                if (!(addr in balances)) {
+                    totalWeight++;
+                }
+            }
         } else if (votingSystem === 'weighted') {
+            // Sum all the balances in balances object
             for (let member in balances) {
                 totalWeight += balances[member];
+            }
+            
+            // Sum all the rest of the balances in the vault object
+            for (let addr in state.vault) {
+                for (let bal of state.vault[addr]) {
+                    totalWeight += bal.balance;
+                }
             }
         } else {
             ThrowError("Invalid voting system.");
@@ -295,12 +312,24 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Is caller allowed to vote?
-        if (!(caller in balances)) {
+        let voterBalance = 0;
+        if (!(caller in balances || caller in state.vault)) {
             ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
-        } else if ((balances[caller] == 0)) {
-            ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
         } else if (state.ownership === 'single' && caller !== state.creator) {
             ThrowError("Caller is not the owner of the vehicle.");
+        } else {
+            // Get caller's balance
+            voterBalance = balances[caller];
+
+            // Also check vault
+            for (let bal of state.vault[caller]) {
+                voterBalance += bal.balance;
+            }
+        }
+
+        // Make sure caller's balance is not zero
+        if (voterBalance == 0) {
+            ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
         }
 
         // Is vote over?
@@ -316,7 +345,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let weightedVote = 1;
         // Determine weight of vote
         if (state.votingSystem === 'weighted') {
-            weightedVote = balances[caller];
+            weightedVote = voterBalance;
         } 
         
         // Record vote

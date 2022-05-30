@@ -125,6 +125,11 @@ For more information on the Foreign Call Protocol (FCP), see the [FCP Spec](http
 ### Balance
 The balance function is used to view a balance of a vehicle member. If a target is not supplied in the input, then the balance of the caller is returned.
 
+The return value is an object containing the target, balance, and locked balance.
+```json
+{ "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8", 10000, 1000 }
+```
+
 #### Sample Balance Action
 ```typescript
 const balAction = {

@@ -58,16 +58,26 @@ async function handle(state, action) {
     if (!(caller in balances) || !(balances[caller] > 0)) {
       ThrowError("Caller is not allowed to propose vote.");
     }
-    let votingSystem = "equal";
+    let votingSystem = "weighted";
     let totalWeight = 0;
     if (state.votingSystem) {
       votingSystem = state.votingSystem;
     }
     if (votingSystem === "equal") {
       totalWeight = Object.keys(balances).length;
+      for (let addr in state.vault) {
+        if (!(addr in balances)) {
+          totalWeight++;
+        }
+      }
     } else if (votingSystem === "weighted") {
       for (let member in balances) {
         totalWeight += balances[member];
+      }
+      for (let addr in state.vault) {
+        for (let bal of state.vault[addr]) {
+          totalWeight += bal.balance;
+        }
       }
     } else {
       ThrowError("Invalid voting system.");
@@ -201,12 +211,19 @@ async function handle(state, action) {
     if (typeof vote === "undefined") {
       ThrowError("Vote does not exist.");
     }
-    if (!(caller in balances)) {
+    let voterBalance = 0;
+    if (!(caller in balances || caller in state.vault)) {
       ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
-    } else if (balances[caller] == 0) {
-      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     } else if (state.ownership === "single" && caller !== state.creator) {
       ThrowError("Caller is not the owner of the vehicle.");
+    } else {
+      voterBalance = balances[caller];
+      for (let bal of state.vault[caller]) {
+        voterBalance += bal.balance;
+      }
+    }
+    if (voterBalance == 0) {
+      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     }
     if (vote.status !== "active") {
       ThrowError("Vote is not active.");
@@ -216,7 +233,7 @@ async function handle(state, action) {
     }
     let weightedVote = 1;
     if (state.votingSystem === "weighted") {
-      weightedVote = balances[caller];
+      weightedVote = voterBalance;
     }
     if (cast === "yay") {
       vote.yays += weightedVote;
@@ -338,6 +355,7 @@ async function handle(state, action) {
     state = res;
   }
 
+
 /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
     /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
     if (input.function === 'plygnd-mint') {
@@ -384,6 +402,7 @@ async function handle(state, action) {
 /*** PLAYGROUND FUNCTIONS END */
 
 
+
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
       ThrowError("Invalid Multi-interaction input.");
@@ -421,7 +440,11 @@ async function handle(state, action) {
     }
   }
   if (input.function === "balance") {
-    return { result: { target, balance } };
+    let vaultBal = 0;
+    for (let bal of state.vault[caller]) {
+      vaultBal += bal.balance;
+    }
+    return { result: { target, balance, vaultBal } };
   } else {
     return { state };
   }

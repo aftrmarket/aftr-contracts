@@ -70,7 +70,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (target in balances) {
             balance = balances[target];
         }
-        //return { result: { target, balance } };
     }
 
     /*** FUNCTIONALITY NOT YET IMPLEMENTED
@@ -116,18 +115,36 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Determine weight of a vote
-        // Default is equal weighting:  all votes counted equally
-        // If weighed system, vote counts as much as voter's balance
-        let votingSystem = 'equal';
+        // Default is weighted meaning votes are weighted by balance
+        // If equal weighting:  all votes counted equally
+        // Make sure to count the members in the balances object and the vault objects
+        // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
+        let votingSystem = 'weighted';
         let totalWeight = 0;
         if (state.votingSystem) {
             votingSystem = state.votingSystem;
         }
         if (votingSystem === 'equal') {
+            // First, get all members in balances object
             totalWeight = Object.keys(balances).length;
+        
+            // Next, get any members that are in the vault, but not in the balances object
+            for (let addr in state.vault) {
+                if (!(addr in balances)) {
+                    totalWeight++;
+                }
+            }
         } else if (votingSystem === 'weighted') {
+            // Sum all the balances in balances object
             for (let member in balances) {
                 totalWeight += balances[member];
+            }
+            
+            // Sum all the rest of the balances in the vault object
+            for (let addr in state.vault) {
+                for (let bal of state.vault[addr]) {
+                    totalWeight += bal.balance;
+                }
             }
         } else {
             ThrowError("Invalid voting system.");
@@ -186,6 +203,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (voteType === 'removeMember') {
                 if (recipient === state.creator) {
                     ThrowError("Can't remove creator from balances.");
+                }
+            }
+
+            // Check for trying to add the vehicle to itself as a member
+            if (voteType === 'addMember') {
+                if (recipient === SmartWeave.contract.id) {
+                    ThrowError("Can't add the vehicle as a member.");
                 }
             }
 
@@ -288,10 +312,28 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Is caller allowed to vote?
-        if (!(caller in balances)) {
+        let voterBalance = 0;
+        if (!(caller in balances || caller in state.vault)) {
             ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
         } else if (state.ownership === 'single' && caller !== state.creator) {
             ThrowError("Caller is not the owner of the vehicle.");
+        } else {
+            // Get caller's balance
+            voterBalance = balances[caller];
+
+            // Also check vault
+            try {
+                for (let bal of state.vault[caller]) {
+                    voterBalance += bal.balance;
+                }
+            } catch(e) {
+                // Vault not iterable
+            }
+        }
+
+        // Make sure caller's balance is not zero
+        if (voterBalance == 0) {
+            ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
         }
 
         // Is vote over?
@@ -307,7 +349,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let weightedVote = 1;
         // Determine weight of vote
         if (state.votingSystem === 'weighted') {
-            weightedVote = balances[caller];
+            weightedVote = voterBalance;
         } 
         
         // Record vote
@@ -320,7 +362,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         vote.voted.push(caller);
-        //return { state };
     }
     /******* END VOTING FUNCTIONS */
 
@@ -345,14 +386,21 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (balances[callerAddress] < qty) {
             ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
         }
+        if (SmartWeave.contract.id === target) {
+            ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+        }
+
+        // if new qty is <= 0 and the caller is the creator of a single owner vehicle, the transfer is not allowed
+        if ((state.ownership === "single") && (callerAddress === state.creator) && (balances[callerAddress] - qty <= 0)) {
+            ThrowError("Invalid transfer because the creator's balance would be 0.");
+        }
+
         balances[callerAddress] -= qty;
         if (targetAddress in balances) {
             balances[targetAddress] += qty;
         } else {
             balances[targetAddress] = qty;
         }
-        //return { state };
-
     }
 
     if (input.function === "withdrawal") {
@@ -399,7 +447,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Transfer tokens into vehicle
         
         if (!input.txID) {
-            ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+            ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+        }
+        if(!input.tokenId) {
+            ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+        }
+        if(input.tokenId === SmartWeave.contract.id) {
+            ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
         }
 
         let lockLength = 0;
@@ -550,7 +604,15 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === 'balance') {
-        return { result: { target, balance } };
+        let vaultBal = 0;
+        try {
+            for (let bal of state.vault[caller]) {
+                vaultBal += bal.balance;
+            }
+        } catch(e) {
+            // Vault not iterable
+        }
+        return { result: { target, balance, vaultBal } };
     } else {
         return { state };
     }
@@ -808,7 +870,9 @@ async function validateTransfer(tokenId: string, transferTx: string) {
             }
         });
     } catch (err) {
-        throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+        //throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+        ThrowError("Error validating tags during 'deposit'.  " + err);
+        //ThrowError("TAGS: " + JSON.stringify(SmartWeave.transaction.tags));
     }
 
     return txObj;

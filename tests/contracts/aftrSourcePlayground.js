@@ -58,16 +58,26 @@ async function handle(state, action) {
     if (!(caller in balances) || !(balances[caller] > 0)) {
       ThrowError("Caller is not allowed to propose vote.");
     }
-    let votingSystem = "equal";
+    let votingSystem = "weighted";
     let totalWeight = 0;
     if (state.votingSystem) {
       votingSystem = state.votingSystem;
     }
     if (votingSystem === "equal") {
       totalWeight = Object.keys(balances).length;
+      for (let addr in state.vault) {
+        if (!(addr in balances)) {
+          totalWeight++;
+        }
+      }
     } else if (votingSystem === "weighted") {
       for (let member in balances) {
         totalWeight += balances[member];
+      }
+      for (let addr in state.vault) {
+        for (let bal of state.vault[addr]) {
+          totalWeight += bal.balance;
+        }
       }
     } else {
       ThrowError("Invalid voting system.");
@@ -113,6 +123,11 @@ async function handle(state, action) {
       if (voteType === "removeMember") {
         if (recipient === state.creator) {
           ThrowError("Can't remove creator from balances.");
+        }
+      }
+      if (voteType === "addMember") {
+        if (recipient === SmartWeave.contract.id) {
+          ThrowError("Can't add the vehicle as a member.");
         }
       }
       if (voteType === "mint") {
@@ -196,10 +211,22 @@ async function handle(state, action) {
     if (typeof vote === "undefined") {
       ThrowError("Vote does not exist.");
     }
-    if (!(caller in balances)) {
+    let voterBalance = 0;
+    if (!(caller in balances || caller in state.vault)) {
       ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
     } else if (state.ownership === "single" && caller !== state.creator) {
       ThrowError("Caller is not the owner of the vehicle.");
+    } else {
+      voterBalance = balances[caller];
+      try {
+        for (let bal of state.vault[caller]) {
+          voterBalance += bal.balance;
+        }
+      } catch (e) {
+      }
+    }
+    if (voterBalance == 0) {
+      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     }
     if (vote.status !== "active") {
       ThrowError("Vote is not active.");
@@ -209,7 +236,7 @@ async function handle(state, action) {
     }
     let weightedVote = 1;
     if (state.votingSystem === "weighted") {
-      weightedVote = balances[caller];
+      weightedVote = voterBalance;
     }
     if (cast === "yay") {
       vote.yays += weightedVote;
@@ -239,6 +266,12 @@ async function handle(state, action) {
     }
     if (balances[callerAddress] < qty) {
       ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
+    }
+    if (SmartWeave.contract.id === target2) {
+      ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+    }
+    if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
+      ThrowError("Invalid transfer because the creator's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
@@ -276,7 +309,13 @@ async function handle(state, action) {
   }
   if (input.function === "deposit") {
     if (!input.txID) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+      ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+    }
+    if (!input.tokenId) {
+      ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+    }
+    if (input.tokenId === SmartWeave.contract.id) {
+      ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
     }
     let lockLength = 0;
     if (input.lockLength) {
@@ -364,7 +403,6 @@ async function handle(state, action) {
     }
 /*** PLAYGROUND FUNCTIONS END */
 
-
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
       ThrowError("Invalid Multi-interaction input.");
@@ -402,7 +440,14 @@ async function handle(state, action) {
     }
   }
   if (input.function === "balance") {
-    return { result: { target, balance } };
+    let vaultBal = 0;
+    try {
+      for (let bal of state.vault[caller]) {
+        vaultBal += bal.balance;
+      }
+    } catch (e) {
+    }
+    return { result: { target, balance, vaultBal } };
   } else {
     return { state };
   }
@@ -592,7 +637,7 @@ async function validateTransfer(tokenId, transferTx) {
       }
     });
   } catch (err) {
-    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+    ThrowError("Error validating tags during 'deposit'.  " + err);
   }
   return txObj;
 }

@@ -322,8 +322,12 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             voterBalance = balances[caller];
 
             // Also check vault
-            for (let bal of state.vault[caller]) {
-                voterBalance += bal.balance;
+            try {
+                for (let bal of state.vault[caller]) {
+                    voterBalance += bal.balance;
+                }
+            } catch(e) {
+                // Vault not iterable
             }
         }
 
@@ -601,8 +605,12 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (input.function === 'balance') {
         let vaultBal = 0;
-        for (let bal of state.vault[caller]) {
-            vaultBal += bal.balance;
+        try {
+            for (let bal of state.vault[caller]) {
+                vaultBal += bal.balance;
+            }
+        } catch(e) {
+            // Vault not iterable
         }
         return { result: { target, balance, vaultBal } };
     } else {

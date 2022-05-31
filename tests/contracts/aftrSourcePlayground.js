@@ -218,8 +218,11 @@ async function handle(state, action) {
       ThrowError("Caller is not the owner of the vehicle.");
     } else {
       voterBalance = balances[caller];
-      for (let bal of state.vault[caller]) {
-        voterBalance += bal.balance;
+      try {
+        for (let bal of state.vault[caller]) {
+          voterBalance += bal.balance;
+        }
+      } catch (e) {
       }
     }
     if (voterBalance == 0) {
@@ -355,7 +358,6 @@ async function handle(state, action) {
     state = res;
   }
 
-
 /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
     /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
     if (input.function === 'plygnd-mint') {
@@ -401,8 +403,6 @@ async function handle(state, action) {
     }
 /*** PLAYGROUND FUNCTIONS END */
 
-
-
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
       ThrowError("Invalid Multi-interaction input.");
@@ -441,8 +441,11 @@ async function handle(state, action) {
   }
   if (input.function === "balance") {
     let vaultBal = 0;
-    for (let bal of state.vault[caller]) {
-      vaultBal += bal.balance;
+    try {
+      for (let bal of state.vault[caller]) {
+        vaultBal += bal.balance;
+      }
+    } catch (e) {
     }
     return { result: { target, balance, vaultBal } };
   } else {

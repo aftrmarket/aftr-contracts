@@ -36,6 +36,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     let target = '';
     let balance = 0;
 
+    const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
+
     /*** MULTI-INTERACTION */
     /*** Multi-interactions allows for multiple contract interactions in a single transaction */
     /*** If multi is set to true on the action input, then the call is a multi-interaction and therefore the following applies: */
@@ -119,12 +121,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // If the votingSystem is equal (or distributed evenly):  all votes counted equally
         // Make sure to count the members in the balances object and the vault objects
         // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
-        let votingSystem = state.votingSystem ? state.votingSystem : "weighted";
         
         let totalWeight = 0;
-        if (state.votingSystem) {
-            votingSystem = state.votingSystem;
-        }
+
         if (votingSystem === 'equal') {
             // First, get all members in balances object
             totalWeight = Object.keys(balances).length;
@@ -349,7 +348,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         let weightedVote = 1;
         // Determine weight of vote
-        if (state.votingSystem === 'weighted') {
+        if (votingSystem === 'weighted') {
             weightedVote = voterBalance;
         } 
         

@@ -116,10 +116,11 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         // Determine weight of a vote
         // Default is weighted meaning votes are weighted by balance
-        // If equal weighting:  all votes counted equally
+        // If the votingSystem is equal (or distributed evenly):  all votes counted equally
         // Make sure to count the members in the balances object and the vault objects
         // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
-        let votingSystem = 'weighted';
+        let votingSystem = state.votingSystem ? state.votingSystem : "weighted";
+        
         let totalWeight = 0;
         if (state.votingSystem) {
             votingSystem = state.votingSystem;

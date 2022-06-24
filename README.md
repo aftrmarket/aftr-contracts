@@ -91,6 +91,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 ```typescript
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
+    statusNote?: string;
     type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective';
     id?: string;
     totalWeight?: number;
@@ -100,11 +101,16 @@ VoteInterface {
     key?: string;
     value?: any;
     note?: string;
+    votingPower?: {             // Saved snapshot of voting power during given vote
+        [addr: string]: number 
+    }
     yays?: number;
     nays?: number;
     voted?: string[];
     start?: number;
-    lockLength?: number;
+    voteLength?: number;    // Length of vote must be stored inside vote in case the settings.voteLength changes
+    lockLength?: number;    // Length of blocks when minting locked tokens
+    txID?: string;          // Used during withdrawal for validation
   }
 ```
 

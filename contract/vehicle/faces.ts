@@ -11,7 +11,7 @@ export interface StateInterface {
     minLength?: number,                              // Minimum amount of blocks required to lease a seat
     maxLength?: number,                              // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
     ownership: string,
-    votingSystem?: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
+    votingSystem: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
     tipsAr?: number,
     tipsMisc?: number,

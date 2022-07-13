@@ -14,6 +14,7 @@ import fs from "fs";
     outdir: "./build/vehicle",
     format: "esm",
     bundle: true,
+    platform: "node"
   });
 
   for (const entry of contractEntries) {

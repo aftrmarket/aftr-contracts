@@ -18,17 +18,21 @@
     "build-contract": "node ./scripts/build.js",
     "build-contract-tests": "node ./scripts/build-tests.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
-    "tests": "node ./build/vehicle/contract-new-tests.js"
+    "tests": "node ./build/vehicle/contract-new-tests.js",
+    "_test": "node ./scripts/test-build.js && jest node ./build/vehicle/contract.test.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@three-em/node": "^0.2.11",
+    "@types/jest": "^28.1.4",
     "arlocal": "^1.1.16",
+    "arlocal-utils": "^1.0.2",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
+    "jest": "^28.1.2",
     "smartweave": "^0.4.46"
   },
   "devDependencies": {

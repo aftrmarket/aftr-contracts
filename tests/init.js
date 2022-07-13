@@ -2,7 +2,7 @@ import Arweave from 'arweave';
 import request from 'supertest';
 import path from 'path';
 import fs from 'fs';
-import { createContractFromTx, createContract } from 'smartweave';
+import { createContractFromTx, createContract, interactWrite } from 'smartweave';
 
 /***
  * This test script assumes an instance of Arweave is running
@@ -33,54 +33,78 @@ async function arLocalInit() {
     let balance = await arweave.wallets.getBalance(addr);
     console.log("BALANCE: " + balance);
 
-    // Create ArDrive contract
-    let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveSource.js'), "utf8");
-    let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveInitState.json'), "utf8");
-    let contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("ArDrive Contract ID: " + contractTxId);
+    // // Create ArDrive contract
+    // let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveSource.js'), "utf8");
+    // let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/arDriveInitState.json'), "utf8");
+    // let contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    // await mine();
+    // console.log("ArDrive Contract ID: " + contractTxId);
 
-    // Create Verto contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoSource.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("Verto Contract ID: " + contractTxId);
+    // // Create Verto contract
+    // contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoSource.js'), "utf8");
+    // initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
+    // contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    // await mine();
+    // let vintContractId = contractTxId;
+    // console.log("Verto Contract ID: " + vintContractId);
 
-    // Create Increment contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/increment.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/incrementInit.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    await mine();
-    console.log("Increment Contract ID: " + contractTxId);
+    // // Create Increment contract
+    // contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/increment.js'), "utf8");
+    // initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/incrementInit.json'), "utf8");
+    // contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    // await mine();
+    // console.log("Increment Contract ID: " + contractTxId);
 
     // Create AFTR Protocol base contract
-    contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");
-    contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    //contractSource = fs.readFileSync(path.join(__dirname, '/build/vehicle/contract.js'), "utf8");
+    let contractSource = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrSourcePlayground.js'), "utf8");
+    let initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrInitState.json'), "utf8");
+    let contractTxId = await createContract(arweave, wallet, contractSource, initState);
     await mine();
     console.log("AFTR Contract ID: " + contractTxId);
 
     const aftrSourceId = await getContractSourceId(contractTxId);
     
     // Create some AFTR vehicles for Testing using AFTR's contract source
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrAlquipaInitState.json'), "utf8");
-    //contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
-    await mine();
-    console.log("AFTR Vehicle - Alquipa: " + contractTxId);
+    // initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrAlquipaInitState.json'), "utf8");
+    // //contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    // contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
+    // await mine();
+    // console.log("AFTR Vehicle - Alquipa: " + contractTxId);
 
-    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrBlueHorizonInitState.json'), "utf8");
+    // initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrBlueHorizonInitState.json'), "utf8");
+    // //contractTxId = await createContract(arweave, wallet, contractSource, initState);
+    // contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
+    // await mine();
+    // console.log("AFTR Vehicle - Blue Horizon: " + contractTxId);
+
+
+    // Create Verto AFTR Vehicle
+    initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/vertoInitState.json'), "utf8");
     //contractTxId = await createContract(arweave, wallet, contractSource, initState);
     contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
+    let vintContractId = contractTxId;
     await mine();
-    console.log("AFTR Vehicle - Blue Horizon: " + contractTxId);
+    console.log("Verto: " + vintContractId);
+
+    // Give user some Verto
+    let input = {
+        function: "plygnd-mint",
+        qty: 100000,
+    };
+    contractTxId = await interactWrite(arweave, wallet, contractTxId, input);
+    console.log("User Wallet VINT: " + contractTxId);
 
     initState = fs.readFileSync(path.join(__dirname, '/tests/contracts/aftrChillinInitState.json'), "utf8");
     //contractTxId = await createContract(arweave, wallet, contractSource, initState);
-    contractTxId = await createAftrVehicle(wallet, aftrSourceId, initState);
+    contractTxId = await createAftrVehicle(wallet, "gAwhLMeYozzq_T87W41dcsiks3aDiV4s1c5-NPD4QbM", initState);
     await mine();
     console.log("AFTR Vehicle - Chillin: " + contractTxId);
+
+
+    // Deposit tokens into AFTR Vehicle
+    let transRes = await transferTokens(arweave, wallet, contractTxId, vintContractId, 100);
+
 
     balance = await arweave.wallets.getBalance(addr);
     console.log("BALANCE: " + balance);
@@ -125,6 +149,39 @@ async function createAftrVehicle(wallet, aftrId, initState) {
 
     return contractTxId;
 }
+
+async function transferTokens(arweave, wallet, vehContractId, pstContractId, qty) {
+    const inputTransfer = {
+        function: "transfer",
+        target: vehContractId,
+        qty: qty,
+    };
+
+    await interactWrite(arweave, wallet, pstContractId, inputTransfer)
+        .then(async (id) => { 
+            console.log("Transfer Vint = " + JSON.stringify(id));
+
+            const inputDeposit = {
+                function: "deposit",
+                tokenId: pstContractId,
+                txID: id,
+            };
+            console.log("INPUT DEP: " + JSON.stringify(inputDeposit));
+
+            await interactWrite(arweave, wallet, vehContractId, inputDeposit)
+                .then(async (txID) => {
+                    await mine();
+                })
+                .catch((error) => {
+                    console.log("Error: " + error);
+                });
+        })
+        .catch((error) => {
+            console.log("Error: " + error);
+        }
+    );
+}
+
 
 arLocalInit();
 //readTags("dqHBM990sXmxx964wPC9_2ZTPeAWLEyka0NuvejYb54");

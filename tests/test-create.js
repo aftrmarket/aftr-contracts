@@ -1,97 +1,9 @@
 import Arweave from 'arweave';
 import { createContractFromTx, readContract, interactWrite, interactRead, interactWriteDryRun } from 'smartweave';
-import { executeContract } from '@three-em/js';
 import path from 'path';
 import fs, { read } from 'fs';
 
-/** MODIFIED TO USE 3EM TO EVALUATE CONTRACTS */
-
-/******* MODIFY INPUTS */
-
-const contractIdSource = "ZjoRUDVaxc_dBLGozlN_hU_ucnadgzEQEL7O-xNWMe0";
-const contractIdTarget = "qeR-QeMZE24KYzoAqUfdfeRE6M_jUHKiSla9nxhuPDM"; 
-const contractSourceAftr = "n4RxIT-IGhI8G4kBkOT2W3w1IrRiHSQRv_sGw0FKNiE";
-
-const walletAddr = "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk";
-
-const input1 = { 
-        function: "invoke",
-        foreignContract: contractIdTarget,
-        invocation: "{'function': 'transfer', 'target': '" + walletAddr + "', 'qty': 1}"
-};
-
-const input2 = {
-    function: "readOutbox",
-    contract: contractIdSource
-};
-
-
-const inputTransfer = {
-    function: "transfer",
-    target: contractIdBH,
-    qty: 9095
-};
-
-
-// const input = {
-//     "function": "propose",
-//     "type": "set",
-//     "recipient": "",
-//     "target": "",
-//     "qty": 0,
-//     "key": "name",
-//     "value": "Joe Chill",
-//     "note": ""
-//   }
-
-// const input = {
-//     function: 'propose',
-//     type: 'set',
-//     recipient: '',
-//     target: '',
-//     qty: 0,
-//     key: 'ownership',
-//     value: 'dao',
-//     note: ''
-// };
-// const input = {
-//       "function": "multiInteraction",
-//       "type": "set",
-//       "recipient": "",
-//       "target": "",
-//       "qty": 0,
-//       "key": "multi",
-//       "value": "",
-//       "note": "Multi-Interaction",
-//       "actions": [
-//         {
-//           "input": {
-//             "function": "propose",
-//             "type": "set",
-//             "key": "votingSystem",
-//             "value": "equal"
-//           }
-//         },
-//         {
-//           "input": {
-//             "function": "propose",
-//             "type": "set",
-//             "key": "settings.quorum",
-//             "value": ".55"
-//           }
-//         },
-//         {
-//           "input": {
-//             "function": "propose",
-//             "type": "set",
-//             "key": "settings.voteLength",
-//             "value": "3000"
-//           }
-//         }
-//       ]
-//   };
-
-/******* MODIFY INPUTS */
+const contractSourceAftr = "1VW2-RdW4PFsqnFOZ2qbX34hqWZGzw1nqFU28ip7n94";
 
 const arweave = Arweave.init({
     host: process.env.ARWEAVE_HOST,
@@ -103,7 +15,7 @@ const arweave = Arweave.init({
 const __dirname = path.resolve();
 const mine = () => arweave.api.get("mine");
 
-async function testInput() {
+async function test() {
     const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile-test.json')));  
     const addr = await arweave.wallets.jwkToAddress(wallet);
     
@@ -142,26 +54,6 @@ async function testInput() {
     console.log(JSON.stringify(vehicle));
 }
 
-async function testFcp() {
-    const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile-test.json')));  
-    const addr = await arweave.wallets.jwkToAddress(wallet);
-
-    let txid = await interactWrite(arweave, wallet, contractIdSource, input1);
-    await mine();
-
-    // arweave.transactions.getStatus("IghBfQhyPEFNDfJCledlQYCCIwyPmAeykUKMpDMFUtA").then(res => {
-    //     console.log(res);
-    // })
-
-    //let contractSourceIdVerto = getContractSourceId(contractIdVerto);
-
-    let txId = await interactWrite(arweave, wallet, contractIdTarget, input2);
-    await mine();
-
-    let vehicle = readContract(arweave, contractIdTarget, undefined, true);
-    console.log(JSON.stringify(vehicle)); 
-}
-
 async function readTags(coolTag) {
     let tx = await arweave.transactions.get(coolTag);
 
@@ -182,25 +74,6 @@ async function readOut(contractId) {
     // console.log("Name: " + vehicle.name);
     // console.log("Ticker: " + vehicle.ticker);
     // console.log("Vehicle: " + JSON.stringify(vehicle));
-}
-
-async function getContractSourceId(txId) {
-    let tx = await arweave.transactions.get(txId);
-    let allTags = [];
-    tx.get('tags').forEach(tag => {
-        let key = tag.get('name', {decode: true, string: true});
-        let value = tag.get('value', {decode: true, string: true});
-        allTags.push({
-            key,
-            value
-        });
-    });
-    for (let i = 0; i < allTags.length; i++) {
-        if (allTags[i].key === 'Contract-Src') {
-            console.log(`${allTags[i].key} : ${allTags[i].value}`); 
-            return allTags[i].value;
-        }
-    }
 }
 
 async function createVehicle() {
@@ -249,7 +122,11 @@ async function createVehicle() {
         "interactions": [],
         "foreignCalls": []
       };
-    const initTags = [{ name: "Protocol", value: "AFTR-BETA" }];
+    const initTags = [
+        { name: "Protocol", value: "AFTR-BETA" },
+        //{ name: "Contract-Src", value: "YOU ASS" }
+
+    ];
     
     await mine();
 
@@ -265,10 +142,12 @@ async function createVehicle() {
 
     console.log(JSON.stringify(result));
 
+    console.log("READING TAGS...");
+    readTags(txid);
+
 }
 
 //testInput();
 //readTags(contractIdVerto);
 //readOut(contractIdBH);
-//createVehicle();
-testFcp();
+createVehicle();

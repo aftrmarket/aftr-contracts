@@ -19,7 +19,7 @@
     "build-contract-tests": "node ./scripts/build-tests.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
     "tests": "node ./build/vehicle/contract-new-tests.js",
-    "_test": "node ./scripts/test-build.js && jest node ./build/vehicle/contract.test.js"
+    "_test": "node ./scripts/test-build.js && jest ./build/vehicle"
   },
   "author": "",
   "license": "MIT",

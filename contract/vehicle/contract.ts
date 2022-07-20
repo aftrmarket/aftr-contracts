@@ -229,7 +229,17 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (!key || key === '') {
                 ThrowError("Invalid Key.");
             }
-            if (!value || value === '') {
+
+            // Ensure some settings are numbers
+            if (key === "settings.quorum" || key === "settings.support" || key === "settings.voteLength" || key === "settings.lockMinLength" || key === "settings.lockMaxLength") {
+                if (typeof value != "number") {
+                  ThrowError(key + " must be a number.");
+                } else {
+                    if ((key === "settings.quorum" || key === "settings.support") && (value < 0.01 || value > 0.99)) {
+                        ThrowError(key + " must be between 0.01 and 0.99.");
+                    }
+                }
+            } else if (!value || value === '') {
                 ThrowError("Invalid Value.");
             }
 

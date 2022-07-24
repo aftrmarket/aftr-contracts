@@ -4,8 +4,9 @@ import { createContract, interactWrite, readContract } from "smartweave";
 import ArLocal from "arlocal";
 import Arweave from "arweave";
 const fs = require('fs');
-const path = require('path')
+const path = require('path');
 
+jest.setTimeout(1200000);
 
 let arweave: Arweave;
 let arlocal: ArLocal;
@@ -31,6 +32,10 @@ describe("Test the collection contract", () => {
   }
 
   beforeAll(async () => {
+    //arlocal = new ArLocal(port);
+
+    //await arlocal.start();
+
     arweave = Arweave.init({
       host: "localhost",
       port,
@@ -67,6 +72,10 @@ describe("Test the collection contract", () => {
 
     console.log(data, CONTRACT_ID)
     expect(data).toEqual(data);
+  });
+
+  afterAll(async () => {
+    //await arlocal.stop();
   });
 
 })

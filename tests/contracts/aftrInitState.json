@@ -200,6 +200,7 @@
     },
     "votes": [],
     "settings" : [
+        [ "support", 0.5 ],
         [ "quorum", 0.5 ],
         [ "voteLength", 2000 ],
         [ "lockMinLength", 100 ],
@@ -207,6 +208,7 @@
         [ "communityAppUrl", "https://aftr.market" ],
         [ "communityDiscussionLinks", "" ],
         [ "communityDescription", "" ],
-        [ "communityLogo", "1RgJQENTmMlYxlL4I3BS9gnMasztmxpcXvRVhpsw4Oc"]
+        [ "communityLogo", "1RgJQENTmMlYxlL4I3BS9gnMasztmxpcXvRVhpsw4Oc"],
+        [ "evolve", null ]
     ]
 }

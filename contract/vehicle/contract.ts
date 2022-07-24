@@ -35,6 +35,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     const votes: VoteInterface[] = state.votes;
     let target = '';
     let balance = 0;
+    //let dmm
 
     /*** MULTI-INTERACTION */
     /*** Multi-interactions allows for multiple contract interactions in a single transaction */
@@ -49,6 +50,11 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
     }
     /*** */
+
+    /*** FUTURE SUPPORT FOR DMM */
+    // if (state.dmm) {
+    // 
+    // }
 
     let block = 0;
     // @ts-expect-error

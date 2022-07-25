@@ -40,10 +40,10 @@ export interface StateInterface {
 }
 
 export interface BalanceInterface {
-    function: 'balance';
-    target: string;
-    balance?: number;
-    ticker?: string;
+    function: 'balance',
+    target: string,
+    balance?: number,
+    ticker?: string,
 }
 
 export interface DmmInterface {
@@ -100,12 +100,6 @@ export interface DepositInterface {
     lockLength?: number;
 }
 
-/*** NO LONGER NEED STATUS CHANGE B/C EVERY CHANGE WILL PROCESS THROUGH THE VOTING SYSTEM */
-// export interface StatusChangeInterface {
-//     function: 'statusChange';
-//     status: string;
-// }
-
 export interface TokenInterface {
     txID: string;
     tokenId: string;
@@ -118,7 +112,8 @@ export interface TokenInterface {
 
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal' ;
+    statusNote?: string;
+    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -127,17 +122,18 @@ export interface VoteInterface {
     key?: string;
     value?: any;
     note?: string;
+    votingPower?: { [addr: string]: number };   // Saved snapshot of voting power during a given vote
     yays?: number;
     nays?: number;
     voted?: string[];
     start?: number;
-    lockLength?: number;
+    voteLength?: number;    // Length of vote must be stored inside vote in case the settings.voteLength changes
+    lockLength?: number;    // Length of blocks when minting locked tokens
     txID?: string;
-    votingPower?: { [addr: string]: number };   // Copy of membership voting power for a specific vote
   }
 
   export interface ForeignCallInterface {
     txID: string;
     contract: string;
-    input: InputInterface
+    input: InputInterface;
   }

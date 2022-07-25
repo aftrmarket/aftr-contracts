@@ -2,20 +2,21 @@ export interface StateInterface {
     name: string,
     ticker: string,
     balances: {
-        [addr: string]: number,                       // lessee wallet addr: number of seats leased
-    },
-    creator: string,                                // Wallet of creator of vehicle
-    seats?: number,                                  // Number of available seats in vehicle
-    lockPeriod?: number,                             // Period of time in blocks that vehicle runs (lockPeriod can be renewed)
-    pricePerSeat?: number,                           // Price per seat is customizable
-    minLength?: number,                              // Minimum amount of blocks required to lease a seat
-    maxLength?: number,                              // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
-    ownership: string,
-    votingSystem: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
-    status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
-    tipsAr?: number,
-    tipsMisc?: number,
-    treasury?: number,
+        [addr: string]: number;                 // lessee wallet addr: number of seats leased
+    };
+    creator: string;                            // Wallet of creator of vehicle
+    seats?: number;                             // Number of available seats in vehicle
+    lockPeriod?: number;                        // Period of time in blocks that vehicle runs (lockPeriod can be renewed)
+    pricePerSeat?: number;                      // Price per seat is customizable
+    minLength?: number;                         // Minimum amount of blocks required to lease a seat
+    maxLength?: number;                         // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
+    ownership: 'single' | 'dao' | 'dmm';
+    votingSystem: 'equal' | 'weighted';        // Member votes count equally or weighted based on token balance
+    status: 'stopped' | 'started' | 'expired';  // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
+    tipsAr?: number;
+    tipsMisc?: number;
+    treasury?: number;
+    dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM)
     vault: {
         [key: string]: [{
             balance: number, // Positive integer
@@ -81,12 +82,6 @@ export interface DepositInterface {
     qty?: number,
     lockLength?: number,
 }
-
-/*** NO LONGER NEED STATUS CHANGE B/C EVERY CHANGE WILL PROCESS THROUGH THE VOTING SYSTEM */
-// export interface StatusChangeInterface {
-//     function: 'statusChange',
-//     status: string,
-// }
 
 export interface TokenInterface {
     txID: string,

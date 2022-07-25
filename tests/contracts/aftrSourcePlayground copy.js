@@ -39,7 +39,6 @@ var __async = (__this, __arguments, generator) => {
       const votes = state.votes;
       let target = "";
       let balance = 0;
-      const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
       if (typeof input.iteration !== "undefined") {
         if (isNaN(input.iteration)) {
           ThrowError("Invalid value for iteration.");
@@ -70,7 +69,6 @@ var __async = (__this, __arguments, generator) => {
         let qty = +input.qty;
         let key = input.key;
         let value = input.value;
-        let voteLength = input.voteLength;
         let lockLength = input.lockLength;
         let start = input.start;
         let txID = input.txID;
@@ -82,17 +80,16 @@ var __async = (__this, __arguments, generator) => {
         if (!(caller in balances) || !(balances[caller] > 0)) {
           ThrowError("Caller is not allowed to propose vote.");
         }
+        let votingSystem = "weighted";
         let totalWeight = 0;
-        let votingPower = JSON.parse(JSON.stringify(balances));
+        if (state.votingSystem) {
+          votingSystem = state.votingSystem;
+        }
         if (votingSystem === "equal") {
           totalWeight = Object.keys(balances).length;
-          for (let addr in votingPower) {
-            votingPower[addr] = 1;
-          }
           for (let addr in state.vault) {
             if (!(addr in balances)) {
               totalWeight++;
-              votingPower[addr] = 1;
             }
           }
         } else if (votingSystem === "weighted") {
@@ -100,15 +97,8 @@ var __async = (__this, __arguments, generator) => {
             totalWeight += balances[member];
           }
           for (let addr in state.vault) {
-            let totalLockedBalance = 0;
             for (let bal of state.vault[addr]) {
-              totalLockedBalance += bal.balance;
               totalWeight += bal.balance;
-            }
-            if (votingPower[addr]) {
-              votingPower[addr] += totalLockedBalance;
-            } else {
-              votingPower[addr] = totalLockedBalance;
             }
           }
         } else {
@@ -116,18 +106,11 @@ var __async = (__this, __arguments, generator) => {
         }
         let recipient = "";
         if (state.ownership === "single") {
-          voteLength = 0;
-        } else if (!voteLength || typeof voteLength === "undefined") {
-          voteLength = settings.get("voteLength");
-        } else if (voteLength < 0) {
-          ThrowError("Invalid Vote Length.");
-        }
-        if (lockLength || typeof lockLength !== "undefined") {
-          if (lockLength < 0) {
-            ThrowError("Invalid Lock Length.");
-          }
-        } else {
           lockLength = 0;
+        } else if (!lockLength || typeof lockLength === "undefined") {
+          lockLength = settings.get("voteLength");
+        } else if (lockLength < 0) {
+          ThrowError("Invalid Lock Length.");
         }
         if (!start || typeof start === "undefined") {
           start = block;
@@ -222,13 +205,11 @@ var __async = (__this, __arguments, generator) => {
           type: voteType,
           id: voteId,
           totalWeight,
-          votingPower,
           yays: 0,
           nays: 0,
           voted: [],
           start,
-          lockLength,
-          voteLength
+          lockLength
         };
         if (recipient !== "") {
           vote.recipient = recipient;
@@ -261,12 +242,18 @@ var __async = (__this, __arguments, generator) => {
           ThrowError("Vote does not exist.");
         }
         let voterBalance = 0;
-        if (state.ownership === "single" && caller !== state.creator) {
-          ThrowError("Caller is not the owner of the vehicle.");
-        } else if (!(caller in vote.votingPower)) {
+        if (!(caller in balances || caller in state.vault)) {
           ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+        } else if (state.ownership === "single" && caller !== state.creator) {
+          ThrowError("Caller is not the owner of the vehicle.");
         } else {
-          voterBalance = vote.votingPower[caller];
+          voterBalance = balances[caller];
+          try {
+            for (let bal of state.vault[caller]) {
+              voterBalance += bal.balance;
+            }
+          } catch (e) {
+          }
         }
         if (voterBalance == 0) {
           ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
@@ -277,10 +264,14 @@ var __async = (__this, __arguments, generator) => {
         if (vote.voted.includes(caller)) {
           ThrowError("Caller has already voted.");
         }
+        let weightedVote = 1;
+        if (state.votingSystem === "weighted") {
+          weightedVote = voterBalance;
+        }
         if (cast === "yay") {
-          vote.yays += voterBalance;
+          vote.yays += weightedVote;
         } else if (cast === "nay") {
-          vote.nays += voterBalance;
+          vote.nays += weightedVote;
         } else {
           ThrowError("Invalid vote cast.");
         }
@@ -386,7 +377,7 @@ var __async = (__this, __arguments, generator) => {
         }
         const foreignState = yield SmartWeave.contracts.readContractState(input.contract);
         if (!foreignState.foreignCalls) {
-          ThrowError("Contract is missing support for foreign calls.");
+          ThrowError("Contract is missing support for foreign calls");
         }
         const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
         let res = state;
@@ -467,9 +458,9 @@ var __async = (__this, __arguments, generator) => {
         state = updatedState;
       }
       if (Array.isArray(votes)) {
-        const concludedVotes = votes.filter((vote) => (block >= vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === "active");
+        const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
         if (concludedVotes.length > 0) {
-          finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"), block);
+          finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
         }
       }
       if (multiIteration <= 1) {
@@ -572,33 +563,18 @@ var __async = (__this, __arguments, generator) => {
       input: input.invocation
     });
   }
-  function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
+  function finalizeVotes(vehicle, concludedVotes, quorum, support) {
     concludedVotes.forEach((vote) => {
-      let finalQuorum = 0;
-      let finalSupport = 0;
-      if (vehicle.ownership === "single" || vote.yays / vote.totalWeight > support) {
-        vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
+      if (vehicle.ownership === "single") {
+        modifyVehicle(vehicle, vote);
+        vote.status = "passed";
+      } else if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+        vote.status = "quorumFailed";
+      } else if (vote.yays / (vote.yays + vote.nays) > support) {
         vote.status = "passed";
         modifyVehicle(vehicle, vote);
-      } else if (vote.nays / vote.totalWeight > support) {
-        vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
-        vote.status = "failed";
-      } else if (block > vote.start + vote.voteLength) {
-        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-        if (vote.totalWeight * quorum > vote.yays + vote.nays) {
-          vote.status = "quorumFailed";
-          vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
-        } else if (vote.yays / (vote.yays + vote.nays) > support) {
-          finalSupport = vote.yays / (vote.yays + vote.nays);
-          vote.status = "passed";
-          vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
-          modifyVehicle(vehicle, vote);
-        }
       } else {
         vote.status = "failed";
-        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-        finalSupport = vote.yays / (vote.yays + vote.nays);
-        vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
       }
     });
   }

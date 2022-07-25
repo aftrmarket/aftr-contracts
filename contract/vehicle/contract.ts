@@ -36,6 +36,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     let target = '';
     let balance = 0;
 
+    const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
+
     /*** MULTI-INTERACTION */
     /*** Multi-interactions allows for multiple contract interactions in a single transaction */
     /*** If multi is set to true on the action input, then the call is a multi-interaction and therefore the following applies: */
@@ -70,7 +72,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (target in balances) {
             balance = balances[target];
         }
-        //return { result: { target, balance } };
     }
 
     /*** FUNCTIONALITY NOT YET IMPLEMENTED
@@ -78,7 +79,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Lease a seat, subtract balance from owner wallet, add to lessee
         const target = input.target;  // Address of lessee
         const qty = input.qty;        // Number of seats to lease
-
         if (!Number.isInteger(qty)) {
             ThrowError('Invalid value for "qty". Must be an integer.');
         }
@@ -98,6 +98,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let qty = +input.qty;
         let key = input.key;
         let value = input.value;
+        let voteLength = input.voteLength;
         let lockLength = input.lockLength;
         let start = input.start;
         let txID = input.txID;
@@ -116,18 +117,49 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Determine weight of a vote
-        // Default is equal weighting:  all votes counted equally
-        // If weighed system, vote counts as much as voter's balance
-        let votingSystem = 'equal';
+        // Default is weighted meaning votes are weighted by balance
+        // If the votingSystem is equal (or distributed evenly):  all votes counted equally
+        // Make sure to count the members in the balances object and the vault objects
+        // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
+        
         let totalWeight = 0;
-        if (state.votingSystem) {
-            votingSystem = state.votingSystem;
-        }
+        let votingPower = JSON.parse(JSON.stringify(balances));
+
         if (votingSystem === 'equal') {
+            // Total weight is just the number of members (in balances AND vault)
             totalWeight = Object.keys(balances).length;
+            
+            // Determine votingPower at the current time of this proposal
+            // First, loop thru balances
+            for (let addr in votingPower) {
+                votingPower[addr] = 1;
+            }
+        
+            // Next, get any members that are in the vault, but not in the balances object
+            for (let addr in state.vault) {
+                if (!(addr in balances)) {
+                    totalWeight++;
+                    votingPower[addr] = 1;
+                }
+            }
         } else if (votingSystem === 'weighted') {
+            // Sum all the balances in balances object
             for (let member in balances) {
                 totalWeight += balances[member];
+            }
+            
+            // Sum all the rest of the balances in the vault object
+            for (let addr in state.vault) {
+                let totalLockedBalance = 0;
+                for (let bal of state.vault[addr]) {
+                    totalLockedBalance += bal.balance;
+                    totalWeight += bal.balance;
+                }
+                if (votingPower[addr]) {
+                    votingPower[addr] += totalLockedBalance;
+                } else {
+                    votingPower[addr] = totalLockedBalance;
+                }
             }
         } else {
             ThrowError("Invalid voting system.");
@@ -136,13 +168,21 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Validate input for member and token management
         let recipient = '';
 
-        // Determine start and lockLength
+        // Determine start and voteLength
         if (state.ownership === 'single') {
+            voteLength = 0;
+        } else if (!voteLength || typeof voteLength === 'undefined') {
+            voteLength = settings.get('voteLength');
+        } else if (voteLength < 0) {
+            ThrowError("Invalid Vote Length.");
+        }
+
+        if (lockLength || typeof lockLength !== 'undefined') {
+            if (lockLength < 0) {
+                ThrowError("Invalid Lock Length.");
+            }
+        } else {
             lockLength = 0;
-        } else if (!lockLength || typeof lockLength === 'undefined') {
-            lockLength = settings.get('voteLength');
-        } else if (lockLength < 0) {
-            ThrowError("Invalid Lock Length.");
         }
 
         if (!start || typeof start === 'undefined') {
@@ -189,6 +229,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 }
             }
 
+            // Check for trying to add the vehicle to itself as a member
+            if (voteType === 'addMember') {
+                if (recipient === SmartWeave.contract.id) {
+                    ThrowError("Can't add the vehicle as a member.");
+                }
+            }
+
             if (voteType === 'mint') {
                 note = "Mint " + String(qty) + " tokens for " + recipient;
             } else if (voteType === 'mintLocked') {
@@ -205,7 +252,16 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (!key || key === '') {
                 ThrowError("Invalid Key.");
             }
-            if (!value || value === '') {
+            // Ensure some settings are numbers
+            if (key === "settings.quorum" || key === "settings.support" || key === "settings.voteLength" || key === "settings.lockMinLength" || key === "settings.lockMaxLength") {
+                if (typeof value != "number") {
+                    ThrowError(key + " must be a number.");
+                } else {
+                    if ((key === "settings.quorum" || key === "settings.support") && (value < 0.01 || value > 0.99)) {
+                        ThrowError(key + " must be between 0.01 and 0.99.");
+                    }
+                }
+            } else if (!value || value === '') {
                 ThrowError("Invalid Value.");
             }
 
@@ -246,11 +302,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             type: voteType,
             id: voteId,
             totalWeight: totalWeight,
+            votingPower: votingPower,
             yays: 0,
             nays: 0,
             voted: [],
             start: start,
-            lockLength: lockLength
+            lockLength: lockLength,
+            voteLength: voteLength
         }
         if (recipient !== '') {
             vote.recipient = recipient;
@@ -287,11 +345,22 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             ThrowError("Vote does not exist.");
         }
 
-        // Is caller allowed to vote?
-        if (!(caller in balances)) {
-            ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
-        } else if (state.ownership === 'single' && caller !== state.creator) {
+        // Is caller allowed to vote?  Check votingPower for this vote
+        let voterBalance = 0;
+
+        if (state.ownership === 'single' && caller !== state.creator) {
             ThrowError("Caller is not the owner of the vehicle.");
+        } else if (!(caller in vote.votingPower)) {
+        //if (!(caller in balances || caller in state.vault)) {
+            ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+        } else {
+            // Get caller's votingPower
+            voterBalance = vote.votingPower[caller];
+        }
+
+        // Make sure caller's balance is not zero
+        if (voterBalance == 0) {
+            ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
         }
 
         // Is vote over?
@@ -303,24 +372,17 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (vote.voted.includes(caller)) {
             ThrowError("Caller has already voted.");
         }
-
-        let weightedVote = 1;
-        // Determine weight of vote
-        if (state.votingSystem === 'weighted') {
-            weightedVote = balances[caller];
-        } 
         
         // Record vote
         if (cast === 'yay') {
-            vote.yays += weightedVote;
+            vote.yays += voterBalance;
         } else if (cast === 'nay') {
-            vote.nays += weightedVote;
+            vote.nays += voterBalance;
         } else {
             ThrowError('Invalid vote cast.');
         }
 
         vote.voted.push(caller);
-        //return { state };
     }
     /******* END VOTING FUNCTIONS */
 
@@ -345,14 +407,21 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (balances[callerAddress] < qty) {
             ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
         }
+        if (SmartWeave.contract.id === target) {
+            ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+        }
+
+        // if new qty is <= 0 and the caller is the creator of a single owner vehicle, the transfer is not allowed
+        if ((state.ownership === "single") && (callerAddress === state.creator) && (balances[callerAddress] - qty <= 0)) {
+            ThrowError("Invalid transfer because the creator's balance would be 0.");
+        }
+
         balances[callerAddress] -= qty;
         if (targetAddress in balances) {
             balances[targetAddress] += qty;
         } else {
             balances[targetAddress] = qty;
         }
-        //return { state };
-
     }
 
     if (input.function === "withdrawal") {
@@ -399,7 +468,13 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Transfer tokens into vehicle
         
         if (!input.txID) {
-            ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+            ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+        }
+        if(!input.tokenId) {
+            ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+        }
+        if(input.tokenId === SmartWeave.contract.id) {
+            ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
         }
 
         let lockLength = 0;
@@ -449,7 +524,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
       
         // Check if the foreign contract supports the foreign call protocol and compatible with the call
         if (!foreignState.foreignCalls) {
-            ThrowError("Contract is missing support for foreign calls");
+            ThrowError("Contract is missing support for foreign calls.");
         }
       
         // Get foreign calls for this contract that have not been executed
@@ -526,9 +601,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     ***/
 
     if (Array.isArray(votes)) {
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + settings.get('voteLength') || state.ownership === 'single') && vote.status === 'active'));        
+        //@ts-expect-error
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === 'active'));        
         if (concludedVotes.length > 0) {
-            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'));
+            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
         }
     }
 
@@ -550,7 +626,15 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === 'balance') {
-        return { result: { target, balance } };
+        let vaultBal = 0;
+        try {
+            for (let bal of state.vault[caller]) {
+                vaultBal += bal.balance;
+            }
+        } catch(e) {
+            // Vault not iterable
+        }
+        return { result: { target, balance, vaultBal } };
     } else {
         return { state };
     }
@@ -671,22 +755,40 @@ function invoke(state, input) {
     });
 }
 
-function finalizeVotes(vehicle, concludedVotes, quorum, support) {
+function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
+    // Loop thru all concluded votes
     concludedVotes.forEach( vote => {
-        // If single owned
-        if (vehicle.ownership === 'single') {
-                modifyVehicle(vehicle, vote);
+        let finalQuorum = 0.0;
+        let finalSupport = 0.0;
+
+        // If single owned or total support has been met, pass vote (voteLength doesn't matter)
+        if (vehicle.ownership === 'single' || vote.yays / vote.totalWeight > support) {
+                vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
                 vote.status = 'passed';
-        } else if (vote.totalWeight * quorum > vote.yays + vote.nays) {
-            // Must pass quorum
-            vote.status = 'quorumFailed';
-        } else if (vote.yays / (vote.yays + vote.nays) > support) {
-            // Vote passed
-            vote.status = 'passed';
-            modifyVehicle(vehicle, vote);
+                modifyVehicle(vehicle, vote);
+        } else if (vote.nays / vote.totalWeight > support) {
+            vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
+            vote.status = "failed";
+        } else if (block > vote.start + vote.voteLength) {
+            // Vote length has expired, so now check quorum and support
+            finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+            if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+                // Must pass quorum
+                vote.status = 'quorumFailed';
+                vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
+            } else if (vote.yays / (vote.yays + vote.nays) > support) {
+                // Must pass support
+                finalSupport = vote.yays / (vote.yays + vote.nays);
+                vote.status = 'passed';
+                vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
+                modifyVehicle(vehicle, vote);
+            }
         } else {
             // Vote failed
             vote.status = 'failed';
+            finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+            finalSupport = vote.yays / (vote.yays + vote.nays);
+            vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
         }
     });
 }

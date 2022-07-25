@@ -11,8 +11,8 @@ The AFTR state follows common practices established by early SmartWeave contract
     },
     creator: string,                                // Wallet of creator of vehicle
     seats?: number,                                 // Number of available seats in vehicle
-    ownership: 'single' | 'dao',                    // Owned by a single wallet or a DAO
-    votingSystem?: 'equal' | 'weighted',            // Member votes count equally or weighted based on token balance
+    ownership: 'single' | 'dao' | 'dmm',            // Owned by a single wallet or a DAO (DMM is a future feature)
+    votingSystem: 'equal' | 'weighted',            // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped, started, or expired (lock period has expired without being renewed)
     vault: {                                        // Locked member tokens
         [key: string]: [{
@@ -91,6 +91,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 ```typescript
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
+    statusNote?: string;
     type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective';
     id?: string;
     totalWeight?: number;
@@ -100,11 +101,16 @@ VoteInterface {
     key?: string;
     value?: any;
     note?: string;
+    votingPower?: {             // Saved snapshot of voting power during given vote
+        [addr: string]: number 
+    }
     yays?: number;
     nays?: number;
     voted?: string[];
     start?: number;
-    lockLength?: number;
+    voteLength?: number;    // Length of vote must be stored inside vote in case the settings.voteLength changes
+    lockLength?: number;    // Length of blocks when minting locked tokens
+    txID?: string;          // Used during withdrawal for validation
   }
 ```
 
@@ -124,6 +130,11 @@ For more information on the Foreign Call Protocol (FCP), see the [FCP Spec](http
 
 ### Balance
 The balance function is used to view a balance of a vehicle member. If a target is not supplied in the input, then the balance of the caller is returned.
+
+The return value is an object containing the target, balance, and locked balance.
+```json
+{ "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8", 10000, 1000 }
+```
 
 #### Sample Balance Action
 ```typescript

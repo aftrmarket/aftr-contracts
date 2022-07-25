@@ -1,0 +1,13 @@
+{
+    "ticker": "DEF",
+    "balances": {
+      "vA7-Mly2AfrUoOrysY-mHaeF8auY7dga-PGYmu_uD-I": 0,
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 1,
+      "BCsJY4qC-ZwOoVOP6izYrnRWThabp_mDlTfD94VQQUE": 0,
+      "a5_du7BfZ3aCqAjVYWROr1uFogvX1O5oN-rMTV3GB1I": 1000000
+    },
+    "invocations": [
+      "tKCVXufS0vd_8AX6GE38ZaqrN_Jyu1J8lZX9m8rvYjQ"
+    ],
+    "foreignCalls": []
+  }

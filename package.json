@@ -15,25 +15,26 @@
     "sw-read": "node -r dotenv/config ./tests/sw-read.js",
     "genkey": "node -r dotenv/config ./tests/genkey.js",
     "test-inc": "node -r dotenv/config ./tests/test-inc.js",
+    "test-vote": "node -r dotenv/config ./tests/test-vote.js",
+    "test-input": "node -r dotenv/config ./tests/test-input.js",
+    "test-dep": "node -r dotenv/config ./tests/test-dep.js",
     "build-contract": "node ./scripts/build.js",
     "build-contract-tests": "node ./scripts/build-tests.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
-    "tests": "node ./build/vehicle/contract-new-tests.js",
-    "_test": "node ./scripts/test-build.js && jest ./build/vehicle"
+    "tests": "node ./build/vehicle/contract-new-tests.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@three-em/node": "^0.2.11",
-    "@types/jest": "^28.1.4",
-    "arlocal": "^1.1.50",
-    "arlocal-utils": "^1.0.2",
+    "@verto/js": "^1.0.0-beta-22",
+    "arlocal": "^1.1.16",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
-    "jest": "^28.1.2",
-    "smartweave": "^0.4.46"
+    "smartweave": "^0.4.46",
+    "verto-cache-interface": "^1.2.4"
   },
   "devDependencies": {
     "dotenv": "^10.0.0",

@@ -5,11 +5,18 @@ import fs from 'fs';
 
 /******* MODIFY INPUTS */
 
-const input = {
-    function: "increment"
-};
+// const input = {
+//     function: "increment"
+// };
 
-const contractId = "iRmmQoKWeChGs2doVLiInKOGKFLCL6moBKZv5HM0uCI";
+const input = {
+    "function": "propose",
+    "recipient": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8",
+    "qty": 300,
+    "type": "burn",
+    "note": "Burn 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
+  }
+const contractId = "5Vzz_FA_WzycrGoU_xV-tQjfQOuuLaKzeitsJwIeUXY";
 
 /******* MODIFY INPUTS */
 
@@ -24,7 +31,7 @@ const __dirname = path.resolve();
 const mine = () => arweave.api.get("mine");
 
 async function testInput() {
-    const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile.json')));
+    const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile-test.json')));
     const addr = await arweave.wallets.jwkToAddress(wallet);
 
     //let txId = await interactWriteDryRun(arweave, wallet, contractId, input);
@@ -35,7 +42,7 @@ async function testInput() {
 
     console.log("READ CONTRACT...");
 
-    let vehicle = await readContract(arweave, contractId);
+    let vehicle = await readContract(arweave, contractId, undefined, true);
     console.log(JSON.stringify(vehicle));
 }
 

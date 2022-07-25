@@ -11,7 +11,7 @@ The AFTR state follows common practices established by early SmartWeave contract
     },
     creator: string,                                // Wallet of creator of vehicle
     seats?: number,                                 // Number of available seats in vehicle
-    ownership: 'single' | 'dao' | 'dmm',            // Owned by a single wallet or a DAO (DMM is a future feature)
+    ownership: 'single' | 'dao',                    // Owned by a single wallet or a DAO
     votingSystem: 'equal' | 'weighted',            // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped, started, or expired (lock period has expired without being renewed)
     vault: {                                        // Locked member tokens

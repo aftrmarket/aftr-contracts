@@ -50,6 +50,7 @@
     "tipsMisc": 0,
     "creator": "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw",
     "ownership": "single",
+    "votingSystem": "weighted",
     "settings": [
         [
             "quorum",

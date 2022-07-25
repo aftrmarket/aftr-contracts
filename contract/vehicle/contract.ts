@@ -79,6 +79,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Lease a seat, subtract balance from owner wallet, add to lessee
         const target = input.target;  // Address of lessee
         const qty = input.qty;        // Number of seats to lease
+
         if (!Number.isInteger(qty)) {
             ThrowError('Invalid value for "qty". Must be an integer.');
         }
@@ -252,16 +253,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (!key || key === '') {
                 ThrowError("Invalid Key.");
             }
-            // Ensure some settings are numbers
-            if (key === "settings.quorum" || key === "settings.support" || key === "settings.voteLength" || key === "settings.lockMinLength" || key === "settings.lockMaxLength") {
-                if (typeof value != "number") {
-                    ThrowError(key + " must be a number.");
-                } else {
-                    if ((key === "settings.quorum" || key === "settings.support") && (value < 0.01 || value > 0.99)) {
-                        ThrowError(key + " must be between 0.01 and 0.99.");
-                    }
-                }
-            } else if (!value || value === '') {
+            if (!value || value === '') {
                 ThrowError("Invalid Value.");
             }
 
@@ -540,6 +532,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
       
         for (const entry of calls) {
           // Run invocation
+          //@ts-expect-error
           res = (await handle(res, { caller: input.contract, input: entry.input })).state;
           
           // Push invocation to executed invocations
@@ -601,7 +594,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     ***/
 
     if (Array.isArray(votes)) {
-        //@ts-expect-error
         const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === 'active'));        
         if (concludedVotes.length > 0) {
             finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);

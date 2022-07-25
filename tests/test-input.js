@@ -9,8 +9,7 @@ function ThrowError(msg) {
 }
 var multiLimit = 1e3;
 var multiIteration = 0;
-async function handle(state, action, SmartWeave = {}, foreignState = {}, joe = false) {
-console.log("***HANDLE***");
+async function handle(state, action) {
   const balances = state.balances;
   const input = action.input;
   const caller = action.caller;
@@ -18,15 +17,7 @@ console.log("***HANDLE***");
   const votes = state.votes;
   let target = "";
   let balance = 0;
-console.log("SW: " + JSON.stringify(SmartWeave));
-console.log("FS: " + JSON.stringify(foreignState));
-  if (joe) {
-    // console.log("**** ACTION: " + JSON.stringify(action));
-    // console.log("INPUT: " + input);
-    //console.log(input.function);
-}
-
-
+  const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
   if (typeof input.iteration !== "undefined") {
     if (isNaN(input.iteration)) {
       ThrowError("Invalid value for iteration.");
@@ -54,11 +45,13 @@ console.log("FS: " + JSON.stringify(foreignState));
     const voteType = input.type;
     let note = input.note;
     let target2 = input.target;
-    let qty = input.qty;
+    let qty = +input.qty;
     let key = input.key;
     let value = input.value;
+    let voteLength = input.voteLength;
     let lockLength = input.lockLength;
     let start = input.start;
+    let txID = input.txID;
     if (state.ownership === "single") {
       if (caller !== state.creator) {
         ThrowError("Caller is not the creator of the vehicle.");
@@ -67,27 +60,52 @@ console.log("FS: " + JSON.stringify(foreignState));
     if (!(caller in balances) || !(balances[caller] > 0)) {
       ThrowError("Caller is not allowed to propose vote.");
     }
-    let votingSystem = "equal";
     let totalWeight = 0;
-    if (state.votingSystem) {
-      votingSystem = state.votingSystem;
-    }
+    let votingPower = JSON.parse(JSON.stringify(balances));
     if (votingSystem === "equal") {
       totalWeight = Object.keys(balances).length;
+      for (let addr in votingPower) {
+        votingPower[addr] = 1;
+      }
+      for (let addr in state.vault) {
+        if (!(addr in balances)) {
+          totalWeight++;
+          votingPower[addr] = 1;
+        }
+      }
     } else if (votingSystem === "weighted") {
       for (let member in balances) {
         totalWeight += balances[member];
+      }
+      for (let addr in state.vault) {
+        let totalLockedBalance = 0;
+        for (let bal of state.vault[addr]) {
+          totalLockedBalance += bal.balance;
+          totalWeight += bal.balance;
+        }
+        if (votingPower[addr]) {
+          votingPower[addr] += totalLockedBalance;
+        } else {
+          votingPower[addr] = totalLockedBalance;
+        }
       }
     } else {
       ThrowError("Invalid voting system.");
     }
     let recipient = "";
     if (state.ownership === "single") {
+      voteLength = 0;
+    } else if (!voteLength || typeof voteLength === "undefined") {
+      voteLength = settings.get("voteLength");
+    } else if (voteLength < 0) {
+      ThrowError("Invalid Vote Length.");
+    }
+    if (lockLength || typeof lockLength !== "undefined") {
+      if (lockLength < 0) {
+        ThrowError("Invalid Lock Length.");
+      }
+    } else {
       lockLength = 0;
-    } else if (!lockLength || typeof lockLength === "undefined") {
-      lockLength = settings.get("voteLength");
-    } else if (lockLength < 0) {
-      ThrowError("Invalid Lock Length.");
     }
     if (!start || typeof start === "undefined") {
       start = block;
@@ -124,6 +142,11 @@ console.log("FS: " + JSON.stringify(foreignState));
           ThrowError("Can't remove creator from balances.");
         }
       }
+      if (voteType === "addMember") {
+        if (recipient === SmartWeave.contract.id) {
+          ThrowError("Can't add the vehicle as a member.");
+        }
+      }
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "mintLocked") {
@@ -145,6 +168,18 @@ console.log("FS: " + JSON.stringify(foreignState));
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
     } else if (voteType === "assetDirective") {
+    } else if (voteType === "withdrawal") {
+      if (!qty || !(qty > 0)) {
+        ThrowError("Error in input.  Quantity not supplied or is invalid.");
+      }
+      if (!input.txID) {
+        ThrowError("Error in input.  No Transaction ID found.");
+      }
+      txID = input.txID;
+      if (!target2) {
+        ThrowError("Error in input.  Target not supplied.");
+      }
+      target2 = isArweaveAddress(target2);
     } else {
       ThrowError("Vote Type not supported.");
     }
@@ -157,11 +192,13 @@ console.log("FS: " + JSON.stringify(foreignState));
       type: voteType,
       id: voteId,
       totalWeight,
+      votingPower,
       yays: 0,
       nays: 0,
       voted: [],
       start,
-      lockLength
+      lockLength,
+      voteLength
     };
     if (recipient !== "") {
       vote.recipient = recipient;
@@ -181,6 +218,9 @@ console.log("FS: " + JSON.stringify(foreignState));
     if (note && note !== "") {
       vote.note = note;
     }
+    if (txID && txID !== "") {
+      vote.txID = txID;
+    }
     votes.push(vote);
   }
   if (input.function === "vote") {
@@ -190,10 +230,16 @@ console.log("FS: " + JSON.stringify(foreignState));
     if (typeof vote === "undefined") {
       ThrowError("Vote does not exist.");
     }
-    if (!(caller in balances)) {
-      ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
-    } else if (state.ownership === "single" && caller !== state.creator) {
+    let voterBalance = 0;
+    if (state.ownership === "single" && caller !== state.creator) {
       ThrowError("Caller is not the owner of the vehicle.");
+    } else if (!(caller in vote.votingPower)) {
+      ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+    } else {
+      voterBalance = vote.votingPower[caller];
+    }
+    if (voterBalance == 0) {
+      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     }
     if (vote.status !== "active") {
       ThrowError("Vote is not active.");
@@ -201,21 +247,16 @@ console.log("FS: " + JSON.stringify(foreignState));
     if (vote.voted.includes(caller)) {
       ThrowError("Caller has already voted.");
     }
-    let weightedVote = 1;
-    if (state.votingSystem === "weighted") {
-      weightedVote = balances[caller];
-    }
     if (cast === "yay") {
-      vote.yays += weightedVote;
+      vote.yays += voterBalance;
     } else if (cast === "nay") {
-      vote.nays += weightedVote;
+      vote.nays += voterBalance;
     } else {
       ThrowError("Invalid vote cast.");
     }
     vote.voted.push(caller);
   }
   if (input.function === "transfer") {
-console.log("**** TRANSFER");
     const target2 = input.target;
     const qty = input.qty;
     const callerAddress = isArweaveAddress(caller);
@@ -235,6 +276,12 @@ console.log("**** TRANSFER");
     if (balances[callerAddress] < qty) {
       ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
     }
+    if (SmartWeave.contract.id === target2) {
+      ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+    }
+    if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
+      ThrowError("Invalid transfer because the creator's balance would be 0.");
+    }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
       balances[targetAddress] += qty;
@@ -243,18 +290,49 @@ console.log("**** TRANSFER");
     }
   }
   if (input.function === "withdrawal") {
+    if (!input.txID) {
+      ThrowError("Missing Transaction ID.");
+    }
+    if (!input.voteId) {
+      ThrowError("Missing Vote ID.");
+    }
+    const tokenIndex = state.tokens.findIndex((token) => token.txID === input.txID);
+    if (tokenIndex !== -1) {
+      if (state.tokens[tokenIndex].withdrawals) {
+        const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex((wd) => wd.voteId === input.voteId);
+        if (wdIndex !== -1) {
+          let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
+          delete invokeInput.voteId;
+          delete invokeInput.txID;
+          delete invokeInput.processed;
+          invoke(state, invokeInput);
+          state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
+          state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter((wd) => wd.voteId !== input.voteId);
+        }
+      } else {
+        ThrowError("Withdrawal not found.");
+      }
+    } else {
+      ThrowError("Invalid withdrawal transaction.");
+    }
   }
   if (input.function === "deposit") {
-    if (!input.txId) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to vehicle.");
+    if (!input.txID) {
+      ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+    }
+    if (!input.tokenId) {
+      ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+    }
+    if (input.tokenId === SmartWeave.contract.id) {
+      ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
     }
     let lockLength = 0;
     if (input.lockLength) {
       lockLength = input.lockLength;
     }
-    const validatedTx = await validateTransfer(input.tokenId, input.txId);
+    const validatedTx = await validateTransfer(input.tokenId, input.txID);
     const txObj = {
-      txId: input.txId,
+      txID: input.txID,
       tokenId: validatedTx.tokenId,
       source: caller,
       balance: validatedTx.qty,
@@ -269,57 +347,22 @@ console.log("**** TRANSFER");
     }
     state.tokens.push(txObj);
   }
-  if (input.function === "invoke") {
-    if (!input.invocation) {
-      ThrowError("Missing function invocation.");
-    }
-    // if (typeof input.invocation !== "string") {
-    //   ThrowError("Invalid invocation.");
-    // }
-    if (!input.invocation.function) {
-        ThrowError("Invalid invocation.");
-    }
-    if (!input.foreignContract) {
-      ThrowError("Missing Foreign Contract ID.");
-    }
-    if (typeof input.foreignContract !== "string") {
-      ThrowError("Invalid Foreign Contract ID.");
-    }
-    if (typeof input.foreignContract !== "string") {
-      ThrowError("Invalid input.");
-    }
-    if (input.foreignContract === SmartWeave.contract.id) {
-      ThrowError("A Foreign Call cannot call itself.");
-    }
-    state.foreignCalls.push({
-      txID: SmartWeave.transaction.id,
-      contract: input.foreignContract,
-      //input: JSON.parse(input.invocation)
-      input: input.invocation
-    });
-  }
   if (input.function === "readOutbox") {
     if (!input.contract) {
       ThrowError("Missing contract to invoke.");
     }
-    if (input.constract === SmartWeave.contract.id) {
+    if (input.contract === SmartWeave.contract.id) {
       ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
     }
-    //const foreignState = await SmartWeave.contracts.readContractState(input.contract); 
+    const foreignState = await SmartWeave.contracts.readContractState(input.contract);
     if (!foreignState.foreignCalls) {
       ThrowError("Contract is missing support for foreign calls");
     }
     const calls = foreignState.foreignCalls.filter((element) => element.contract === SmartWeave.contract.id && !state.invocations.includes(element.txID));
-
     let res = state;
     for (const entry of calls) {
-        let action = {
-            caller: input.contract,
-            input: entry.input
-        }
-        //console.log("ACTION: " + JSON.stringify(action));
-        res = (await handle(res, action, {}, {}, true)).state;
-        res.invocations.push(entry.txID);
+      res = (await handle(res, { caller: input.contract, input: entry.input })).state;
+      res.invocations.push(entry.txID);
     }
     state = res;
   }
@@ -346,9 +389,11 @@ console.log("**** TRANSFER");
     state = updatedState;
   }
   if (Array.isArray(votes)) {
-    const concludedVotes = votes.filter((vote) => (block >= vote.start + settings.get("voteLength") || state.ownership === "single") && vote.status === "active");
+    const concludedVotes = votes.filter((vote) => (block >= vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight >= settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === "active");
+/**** JOE */
+//console.log(JSON.stringify(concludedVotes));
     if (concludedVotes.length > 0) {
-      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"));
+      finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"), block);
     }
   }
   if (multiIteration <= 1) {
@@ -360,7 +405,14 @@ console.log("**** TRANSFER");
     }
   }
   if (input.function === "balance") {
-    return { result: { target, balance } };
+    let vaultBal = 0;
+    try {
+      for (let bal of state.vault[caller]) {
+        vaultBal += bal.balance;
+      }
+    } catch (e) {
+    }
+    return { result: { target, balance, vaultBal } };
   } else {
     return { state };
   }
@@ -415,21 +467,61 @@ function getStateValue(vehicle, key) {
 }
 function processWithdrawal(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
-    vehicle.tokens = vehicle.tokens.filter((token) => token.txId !== tokenObj.txId);
+    vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
   }
 }
-function finalizeVotes(vehicle, concludedVotes, quorum, support) {
+function invoke(state, input) {
+  if (!input.invocation) {
+    ThrowError("Missing function invocation.");
+  }
+  if (!input.invocation.function) {
+    ThrowError("Invalid invocation.");
+  }
+  if (!input.foreignContract) {
+    ThrowError("Missing Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid input.");
+  }
+  if (input.foreignContract === SmartWeave.contract.id) {
+    ThrowError("A Foreign Call cannot call itself.");
+  }
+  state.foreignCalls.push({
+    txID: SmartWeave.transaction.id,
+    contract: input.foreignContract,
+    input: input.invocation
+  });
+}
+function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
   concludedVotes.forEach((vote) => {
-    if (vehicle.ownership === "single") {
-      modifyVehicle(vehicle, vote);
-      vote.status = "passed";
-    } else if (vote.totalWeight * quorum > vote.yays + vote.nays) {
-      vote.status = "quorumFailed";
-    } else if (vote.yays / (vote.yays + vote.nays) > support) {
+    let finalQuorum = 0;
+    let finalSupport = 0;
+    if (vehicle.ownership === "single" || vote.yays / vote.totalWeight >= support) {
+      vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
       vote.status = "passed";
       modifyVehicle(vehicle, vote);
+    } else if (vote.nays / vote.totalWeight > support) {
+        vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
+        vote.status = "failed";
+    } else if (block > vote.start + vote.voteLength) {
+      finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+      if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+        vote.status = "quorumFailed";
+        vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
+      } else if (vote.yays / (vote.yays + vote.nays) > support) {
+        finalSupport = vote.yays / (vote.yays + vote.nays);
+        vote.status = "passed";
+        vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
+        modifyVehicle(vehicle, vote);
+      }
     } else {
       vote.status = "failed";
+      finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+      finalSupport = vote.yays / (vote.yays + vote.nays);
+      vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
     }
   });
 }
@@ -461,6 +553,29 @@ function modifyVehicle(vehicle, vote) {
       updateSetting(vehicle, key, vote.value);
     } else {
       vehicle[vote.key] = vote.value;
+    }
+  } else if (vote.type === "withdrawal") {
+    const tokenObj = vehicle.tokens.find((token) => token.txID === vote.txID);
+    let input = {
+      function: "withdrawal",
+      foreignContract: tokenObj.tokenId,
+      invocation: {
+        function: "transfer",
+        target: vote.target,
+        qty: vote.qty
+      }
+    };
+    if (vehicle.ownership === "single") {
+      invoke(vehicle, input);
+      tokenObj.balance -= vote.qty;
+    } else {
+      input["voteId"] = vote.id;
+      input["processed"] = false;
+      input["txID"] = vote.txID;
+      if (!tokenObj.withdrawals) {
+        tokenObj["withdrawals"] = [];
+      }
+      tokenObj.withdrawals.push(input);
     }
   }
 }
@@ -502,7 +617,7 @@ async function validateTransfer(tokenId, transferTx) {
       }
     });
   } catch (err) {
-    throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+    ThrowError("Error validating tags during 'deposit'.  " + err);
   }
   return txObj;
 }
@@ -522,55 +637,116 @@ async function ensureValidInteraction(contractId, interactionId) {
   };
 }
 
+/********************** */
 
-
-/************************** */
-let stateSrc = {
-    "name": "Chillin Treasury",
-    "ticker": "CHILL",
+// Inputs
+let state = {
+    "votingSystem": "equal",
     "balances": {
-      "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 10000,
+      "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1000,
       "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 2000,
-      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 1050,
-      "zVNaaPGR8yL5Dp5x4Jb-XPH4hlvB7ZoAvVFquw7J58w": 100,
-      "ffOomWmOgtmJ816U_l5hsMpmEFsx5DUDxUEAcoLOy7Q": 200,
-      "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw": 588,
-      "h-Bgr13OWUOkRGWrnMT0LuUKfJhRss5pfTdxHmNcXyw": 9970
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 5000,
+      "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10000
     },
-    "invocations": [],
-    "foreignCalls": [],
-    "tokens": [
+    "vault": {
+      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": [
+        {
+          "balance": 30000,
+          "end": 653619,
+          "start": 524019
+        },
+        {
+          "balance": 2500000,
+          "start": 646429,
+          "end": 789813
+        }
+      ],
+      "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": [
+        {
+          "balance": 1000000,
+          "end": 1581361,
+          "start": 530161
+        }
+      ],
+      "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": [
+        {
+          "balance": 3,
+          "end": 659878,
+          "start": 530278
+        }
+      ]
+    },
+    "ownership": "dao",
+    "creator": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "votes": [
       {
-        "txId": "hjb9tJAj3AynWDbUGJirhvWlvJoLFkcfHuynGcviN4g",
-        "tokenId": "2OVDExwTPMMM2XedV7JMz_xk-y4gPdVCbnWXzRAclxo",
-        "source": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
-        "balance": 1000,
-        "start": 17,
-        "name": "Vint",
-        "ticker": "VINT",
-        "logo": "3lqPiVN-heZkkBq996e1m_r6XuD_5-0kGZvtXBkOcnk",
-        "lockLength": 0
+        "status": "active",
+        "type": "set",
+        "id": "34pWkK-7PZoxjoF9H5-JGBdziSLKJpG1Tzo95apzFziBU0",
+        "totalWeight": 3560303,
+        "votingPower": {
+            "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+            "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 2531000,
+            "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 1002000,
+            "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 5000,
+            "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10003
+        },
+        "yays": 5000,
+        "nays": 0,
+        "voted": [
+          "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk"
+        ],
+        "start": 34,
+        "lockLength": 2000,
+        "key": "ticker",
+        "value": "BL",
+        "note": "Change ticker from BLUE to BL"
       },
       {
-        "txId": "QXJ6ZbzSllTyNubPxIVcgVGKvt1bach8B465-Wzk5U0",
-        "tokenId": "qeR-QeMZE24KYzoAqUfdfeRE6M_jUHKiSla9nxhuPDM",
-        "source": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
-        "balance": 15000,
-        "start": 18,
-        "name": "arHD",
-        "ticker": "ARHD",
-        "logo": "rLJXJk5X4WgWinknoJglnm8K7DnCIEIJxPduH-t11bk",
-        "lockLength": 0
+        "status": "active",
+        "type": "set",
+        "id": "61tBC2WnbcXbAfN2YCz0CuKzbpvtbfEUHIp9CxfStMSjA0",
+        "totalWeight": 5,
+        "votingPower": {
+            "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 12300,
+            "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 2531000,
+            "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 1002000,
+            "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 5000,
+            "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 10003
+        },
+        "yays": 0,
+        "nays": 0,
+        "voted": [],
+        "start": 61,
+        "lockLength": 2000,
+        "key": "ticker",
+        "value": "BLUEY",
+        "note": "Change ticker from BLUE to BLUEY"
+      },
+      {
+        "status": "active",
+        "type": "set",
+        "id": "210txTEST",
+        "totalWeight": 5,
+        "votingPower": {
+          "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 1,
+          "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 1,
+          "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw": 1,
+          "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 1,
+          "tNGSQylZv2XyXEdxG-MeahZTLESNdw35mT3uy4aTdqg": 1
+        },
+        "yays": 3,
+        "nays": 0,
+        "voted": ["abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8", "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw", "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk"],
+        "start": 210,
+        "lockLength": 0,
+        "voteLength": 2000,
+        "key": "settings.voteLength",
+        "value": 100,
+        "note": "Change voteLength from 2000 to 100"
       }
     ],
-    "vault": {},
-    "votes": [],
-    "status": "started",
-    "tipsAr": 235,
-    "tipsMisc": 2549,
-    "creator": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
-    "ownership": "single",
-    "votingSystem": "equal",
     "settings": [
       [
         "quorum",
@@ -593,108 +769,32 @@ let stateSrc = {
         10000
       ],
       [
-        "communityLogo",
-        "uNmSU-BQwdH0J878WuMGPNgwTKJQwpNGfazp0QChOv0"
-      ]
-    ],
-    "treasury": 0
-  };
-let stateTgt = {
-    "name": "arHD",
-    "ticker": "ARHD",
-    "invocations": [],
-    "foreignCalls": [],
-    "balances": {
-      "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 103000,
-      "ZjoRUDVaxc_dBLGozlN_hU_ucnadgzEQEL7O-xNWMe0": 15000
-    },
-    "vault": {
-    },
-    "votes": [
-    ],
-    "roles": {},
-    "settings": [
-      [
-        "quorum",
-        0.15
-      ],
-      [
-        "support",
-        0.5
-      ],
-      [
-        "voteLength",
-        2160
-      ],
-      [
-        "lockMinLength",
-        5040
-      ],
-      [
-        "lockMaxLength",
-        788400
-      ],
-      [
-        "communityAppUrl",
-        "https://ardrive.io"
-      ],
-      [
-        "communityDiscussionLinks",
-        [
-          "https://discord.gg/ya4hf2H",
-          "https://twitter.com/ardriveapp"
-        ]
-      ],
-      [
         "communityDescription",
-        "We are a community focused on building the best private, secure, decentralized, pay-as-you-go, censorship-resistant and permanent data storage solution, for everyone.  With ArDrive's desktop, mobile and web apps, you can easily sync and share your public and private files from the PermaWeb."
+        "Blue Horizon focuses on indexing infrastructure PSTs."
       ],
       [
         "communityLogo",
-        "rLJXJk5X4WgWinknoJglnm8K7DnCIEIJxPduH-t11bk"
-      ],
-      [
-        "fee",
-        15
+        "KbjoPG0ivD1otfTlkeWCjVaRMYV_eoaf5sgwMdD6Ol0"
       ]
     ]
   };
 
-const contractIdSource = "ZjoRUDVaxc_dBLGozlN_hU_ucnadgzEQEL7O-xNWMe0"; // Chillin
-const contractIdTarget = "qeR-QeMZE24KYzoAqUfdfeRE6M_jUHKiSla9nxhuPDM";
-const walletAddr = "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk";
 
-let SmartWeaveSrc = {
-    contract: { id: contractIdSource },
-    transaction: { id: "txSrc101" }
-};
-let SmartWeaveTgt = {
-    contract: { id: contractIdTarget },
-    transaction: { id: "txTgt202" }
-};
-
-let action1 = {
-    caller: "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
-    input: { 
-        function: "invoke",
-        foreignContract: contractIdTarget,
-        //invocation: JSON.parse('{"function": "transfer", "target": "' + walletAddr + '", "qty": 1}')
-        invocation: "CRAP"
-    }
-};
-
-let action2 = {
-    caller: "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+  let action = {
+    caller: "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    // input: {
+    //     function: 'vote',
+    //     voteId: "34pWkK-7PZoxjoF9H5-JGBdziSLKJpG1Tzo95apzFziBU0",
+    //     cast: 'nay'
+    // },
     input: {
-        "function": "readOutbox",
-        "contract": contractIdSource
+        function: 'propose',
+        type: 'set',
+        key: 'settings.custom1',
+        value: {"key": "1", "key1": "2"}
     }
-}
+  };
 
-let res1 = await handle(stateSrc, action1, SmartWeaveSrc);
-console.log("RES1: " + JSON.stringify(res1));
+  let newState = await handle(state, action);
 
-console.log("__________");
-
-let res2 = await handle(stateTgt, action2, SmartWeaveTgt, res1.state);
-console.log("RES2: " + JSON.stringify(res2));
+  console.log(JSON.stringify(newState));

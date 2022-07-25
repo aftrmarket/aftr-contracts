@@ -1,0 +1,17 @@
+{
+    "ticker": "ABC",
+    "balances": {
+      "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk": 1
+    },
+    "invocations": [],
+    "foreignCalls": [
+      {
+        "contract": "19ba3gesoDBFzpwthqxt-ZVZpen-28OQizZAzo9HwOY",
+        "input": {
+          "function": "transfer",
+          "target": "pvPWBZ8A5HLpGSEfhEmK1A3PfMgB_an8vVS6L14Hsls",
+          "qty": 1
+        }
+      }
+    ]
+  }

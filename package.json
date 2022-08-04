@@ -28,7 +28,7 @@
   "dependencies": {
     "@three-em/node": "^0.2.11",
     "@verto/js": "^1.0.0-beta-22",
-    "arlocal": "^1.1.16",
+    "arlocal": "^1.1.53",
     "arweave": "^1.10.18",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",

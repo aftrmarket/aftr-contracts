@@ -290,6 +290,9 @@ async function handle(state, action) {
     }
   }
   if (input.function === "withdrawal") {
+    if (!state.tokens) {
+      ThrowError("This vehicle has no tokens.");
+    }
     if (!input.txID) {
       ThrowError("Missing Transaction ID.");
     }
@@ -317,6 +320,9 @@ async function handle(state, action) {
     }
   }
   if (input.function === "deposit") {
+    if (!state.invocations || !state.foreignCalls) {
+      ThrowError("The token does not support cross-contract calls, so it cannot be deposited into the vehicle.");
+    }
     if (!input.txID) {
       ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
     }
@@ -395,7 +401,7 @@ async function handle(state, action) {
     }
   }
   if (multiIteration <= 1) {
-    if (state.vault) {
+    if (state.vault && typeof state.vault === "object") {
       scanVault(state, block);
     }
     if (state.tokens) {

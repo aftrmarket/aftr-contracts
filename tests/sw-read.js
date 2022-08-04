@@ -9,13 +9,14 @@ import fs from 'fs';
 
 /******* MODIFY INPUTS */
 
-const contractId = "He3OjcLWfzeXR_q9eewlppK6Nk7O1k_5RkHxmnS8lig";
+const contractId = "jJiM47iPM2u7lyuBQ49006zGbtTJ8T3y2jySRDnf8GE";
 // const input = { 
 //         function: 'balance',
 //         target: 'ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk'
 //}
 
-const input = { function: 'transfer', target: 'ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk', qty: 1 }
+//const input = { function: 'transfer', target: 'ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9r1', qty: 1 };
+const input = { function: 'mint', qty: 10 };
 
 /******* MODIFY INPUTS */
 
@@ -42,7 +43,7 @@ async function test() {
     });
     const wallet = JSON.parse(fs.readFileSync(path.join(__dirname, 'keyfile-test.json')));
     //let vehicle = await readContract(arweave, contractId);
-    let vehicle = await readContract(arweave, contractId, undefined, true);  // Show contract interactions
+    //let vehicle = await readContract(arweave, contractId, undefined, true);  // Show contract interactions
 
     //let vehicle = await executeContract(contractId, undefined, gatewayConfig);  // 3EM
 
@@ -56,7 +57,7 @@ async function test() {
 
     //let inputDep = {function:"deposit",tokenId:"aZfiYCuz3pOSfLVKe7Z9NTb6BobppWEFBLRabXX5Om8",txID:"PBzPhywHNKlpwOhe_1ILnXp-FEX7RohxUguLLGtX7BQ"};
     //let inputDep = {function:"deposit",tokenId:"1o62KG14JG-Tj5Bk9RfBEWRNdHfqhjyY1MEIdC5gLSc",txID:"CkyK_QvDEIil7Fxwl6snGlWuh2QKFUY7JozNWe9X_U8"};
-    //let vehicle = await interactWriteDryRun(arweave, wallet, contractId, inputDep);
+    let vehicle = await interactWriteDryRun(arweave, wallet, contractId, input);
 
     //console.log(JSON.stringify(tx));
 

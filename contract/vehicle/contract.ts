@@ -473,11 +473,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (input.function === 'deposit') {
         // Transfer tokens into vehicle
-        
-        if (!state.invocations || !state.foreignCalls) {
-            ThrowError("The token does not support cross-contract calls, so it cannot be deposited into the vehicle.");
-        }
-
         if (!input.txID) {
             ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
         }

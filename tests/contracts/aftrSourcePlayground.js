@@ -320,9 +320,6 @@ async function handle(state, action) {
     }
   }
   if (input.function === "deposit") {
-    if (!state.invocations || !state.foreignCalls) {
-      ThrowError("The token does not support cross-contract calls, so it cannot be deposited into the vehicle.");
-    }
     if (!input.txID) {
       ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
     }
@@ -372,6 +369,7 @@ async function handle(state, action) {
     }
     state = res;
   }
+
 
 /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
     /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */

@@ -290,6 +290,9 @@ async function handle(state, action) {
     }
   }
   if (input.function === "withdrawal") {
+    if (!state.tokens) {
+      ThrowError("This vehicle has no tokens.");
+    }
     if (!input.txID) {
       ThrowError("Missing Transaction ID.");
     }
@@ -395,7 +398,7 @@ async function handle(state, action) {
     }
   }
   if (multiIteration <= 1) {
-    if (state.vault) {
+    if (state.vault && typeof state.vault === "object") {
       scanVault(state, block);
     }
     if (state.tokens) {

@@ -290,6 +290,9 @@ async function handle(state, action) {
     }
   }
   if (input.function === "withdrawal") {
+    if (!state.tokens) {
+      ThrowError("This vehicle has no tokens.");
+    }
     if (!input.txID) {
       ThrowError("Missing Transaction ID.");
     }
@@ -367,6 +370,7 @@ async function handle(state, action) {
     state = res;
   }
 
+
 /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
     /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
     if (input.function === 'plygnd-mint') {
@@ -442,7 +446,7 @@ async function handle(state, action) {
     }
   }
   if (multiIteration <= 1) {
-    if (state.vault) {
+    if (state.vault && typeof state.vault === "object") {
       scanVault(state, block);
     }
     if (state.tokens) {

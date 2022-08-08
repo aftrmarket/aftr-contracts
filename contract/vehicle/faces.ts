@@ -16,7 +16,7 @@ export interface StateInterface {
     tipsAr?: number;
     tipsMisc?: number;
     treasury?: number;
-    dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM)
+    ///dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM) - FUTURE ADD
     vault: {
         [key: string]: [{
             balance: number, // Positive integer

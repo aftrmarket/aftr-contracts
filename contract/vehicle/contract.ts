@@ -342,11 +342,14 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         if (state.ownership === 'single' && caller !== state.creator) {
             ThrowError("Caller is not the owner of the vehicle.");
+        
+        //@ts-expect-error
         } else if (!(caller in vote.votingPower)) {
         //if (!(caller in balances || caller in state.vault)) {
             ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
         } else {
             // Get caller's votingPower
+            //@ts-expect-error
             voterBalance = vote.votingPower[caller];
         }
 
@@ -356,24 +359,28 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Is vote over?
+        //@ts-expect-error
         if (vote.status !== 'active') {
             ThrowError("Vote is not active.");
         }
 
         // Has caller already voted?
+        //@ts-expect-error
         if (vote.voted.includes(caller)) {
             ThrowError("Caller has already voted.");
         }
         
         // Record vote
         if (cast === 'yay') {
+            //@ts-expect-error
             vote.yays += voterBalance;
         } else if (cast === 'nay') {
+            //@ts-expect-error
             vote.nays += voterBalance;
         } else {
             ThrowError('Invalid vote cast.');
         }
-
+        //@ts-expect-error
         vote.voted.push(caller);
     }
     /******* END VOTING FUNCTIONS */
@@ -417,6 +424,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === "withdrawal") {
+        if (!state.tokens) {
+            ThrowError("This vehicle has no tokens.")
+        }
+
         if (!input.txID) {
             ThrowError("Missing Transaction ID.");
         }
@@ -425,13 +436,16 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         // Is the transaction approved?
+        //@ts-expect-error
         const tokenIndex = state.tokens.findIndex(token => token.txID === input.txID);
         if (tokenIndex !== -1) {
+            //@ts-expect-error
             if (state.tokens[tokenIndex].withdrawals) {
                 //@ts-expect-error
                 const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex( wd => wd.voteId === input.voteId);
                             
                 if (wdIndex !== -1) {
+                    //@ts-expect-error
                     let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
                     delete invokeInput.voteId;
                     delete invokeInput.txID;
@@ -441,6 +455,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                     invoke(state, invokeInput);
 
                     // Update deposits
+                    //@ts-expect-error
                     state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
 
                     // Remove withdrawals object from the token object
@@ -458,7 +473,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (input.function === 'deposit') {
         // Transfer tokens into vehicle
-        
         if (!input.txID) {
             ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
         }
@@ -579,6 +593,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             nextAction.caller = caller;
 
             let result =  await handle(updatedState, nextAction);
+            //@ts-expect-error
             updatedState = result.state;
 
             iteration++;
@@ -594,6 +609,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     ***/
 
     if (Array.isArray(votes)) {
+        //@ts-expect-error
         const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === 'active'));        
         if (concludedVotes.length > 0) {
             finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
@@ -607,7 +623,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
 
         // Unlock tokens in vault
-        if (state.vault) {
+        if (state.vault && typeof state.vault === "object") {
             scanVault(state, block);
         }
 
@@ -646,11 +662,14 @@ function scanVault(vehicle, block) {
     for (const [key, arr] of Object.entries(vehicle.vault)) {
         // @ts-expect-error
         for(let i=0; i < arr.length; i++) {
+            //@ts-expect-error
             if (arr[i].end <= block) {
                 // Transfer balance
                 if (key in vehicle.balances) {
+                    //@ts-expect-error
                     vehicle.balances[key] += arr[i].balance;
                 } else {
+                    //@ts-expect-error
                     vehicle.balances[key] = arr[i].balance;
                 }
     
@@ -708,7 +727,7 @@ function processWithdrawal(vehicle, tokenObj) {
 
 function invoke(state, input) {
     /****
-     * There is no invoke function in an AFTR Vehicle b/c votes have to be passed in order to transfer tokens out of a vehicle.
+     * There is no invoke condition in an AFTR Vehicle b/c votes have to be passed in order to transfer tokens out of a vehicle.
      * So, this function must be called from within the AFTR Vehicle.
      */
 
@@ -836,6 +855,7 @@ function modifyVehicle(vehicle, vote) {
             invoke(vehicle, input);
 
             // Update deposits
+            /*** Is there a way to validate this amount at a later time if the transfer fails? */
             tokenObj.balance -= vote.qty;
         } else {
             // Votes will be required to process the withdrawal, so add to the withdrawals array of the token object until the vote is passed

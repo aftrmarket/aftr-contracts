@@ -659,6 +659,11 @@ function isArweaveAddress(addy: string) {
 }
 
 function scanVault(vehicle, block) {
+    /*** 
+     * Scans the vault and unlocks any balances that have passed their required lock time. 
+     * When it's time for a balance to be unlocked, the balance is moved from the vault to the balances object.
+    */
+
     for (const [key, arr] of Object.entries(vehicle.vault)) {
         // @ts-expect-error
         for(let i=0; i < arr.length; i++) {

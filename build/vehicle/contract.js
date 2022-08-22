@@ -52,25 +52,44 @@ async function handle(state, action) {
     let lockLength = input.lockLength;
     let start = input.start;
     let txID = input.txID;
+    if (!(caller in balances) || !(balances[caller] > 0)) {
+      let totalBalance = 0;
+      if (state.vault[caller]) {
+        for (let bal of state.vault[caller]) {
+          totalBalance += bal.balance;
+        }
+      }
+      if (totalBalance === 0) {
+        ThrowError("Caller is not allowed to propose vote.");
+      }
+    }
+    let totalWeight = 0;
+    let votingPower = JSON.parse(JSON.stringify(balances));
     if (state.ownership === "single") {
       if (caller !== state.creator) {
         ThrowError("Caller is not the creator of the vehicle.");
       }
-    }
-    if (!(caller in balances) || !(balances[caller] > 0)) {
-      ThrowError("Caller is not allowed to propose vote.");
-    }
-    let totalWeight = 0;
-    let votingPower = JSON.parse(JSON.stringify(balances));
-    if (votingSystem === "equal") {
-      totalWeight = Object.keys(balances).length;
+      votingPower = { [caller]: 1 };
+      totalWeight = 1;
+    } else if (votingSystem === "equal") {
       for (let addr in votingPower) {
-        votingPower[addr] = 1;
+        if (votingPower[addr] > 0) {
+          votingPower[addr] = 1;
+          totalWeight++;
+        } else {
+          delete votingPower[addr];
+        }
       }
       for (let addr in state.vault) {
-        if (!(addr in balances)) {
-          totalWeight++;
-          votingPower[addr] = 1;
+        if (!(addr in votingPower)) {
+          let totalLockedBalance = 0;
+          for (let bal of state.vault[addr]) {
+            totalLockedBalance += bal.balance;
+          }
+          if (totalLockedBalance > 0) {
+            totalWeight++;
+            votingPower[addr] = 1;
+          }
         }
       }
     } else if (votingSystem === "weighted") {

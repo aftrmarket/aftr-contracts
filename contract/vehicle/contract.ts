@@ -104,17 +104,19 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let start = input.start;
         let txID = input.txID;
         
-        // Check if single ownership
-        if (state.ownership === 'single') {  
-            // Single ownership, so caller must be creator
-            if (caller !== state.creator) {
-                ThrowError("Caller is not the creator of the vehicle.");
-            }
-        }
 
-        // Check valid inputs, caller is member with balance
+        // Check valid inputs, caller is member with balance or member in vault
         if (!(caller in balances) || !(balances[caller] > 0)) { 
-            ThrowError("Caller is not allowed to propose vote.")
+            // Not in balances, now check vault
+            let totalBalance = 0;
+            if (state.vault[caller]) {
+                for (let bal of state.vault[caller]) {
+                    totalBalance += bal.balance;
+                }
+            }
+            if (totalBalance === 0) {
+                ThrowError("Caller is not allowed to propose vote.")
+            }
         }
 
         // Determine weight of a vote
@@ -126,21 +128,40 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let totalWeight = 0;
         let votingPower = JSON.parse(JSON.stringify(balances));
 
-        if (votingSystem === 'equal') {
-            // Total weight is just the number of members (in balances AND vault)
-            totalWeight = Object.keys(balances).length;
-            
+        if (state.ownership === 'single') {
+            // Validate - Single ownership, so caller must be creator
+            if (caller !== state.creator) {
+                ThrowError("Caller is not the creator of the vehicle.");
+            }
+
+            // votingPower and totalWeight is already known
+            votingPower = { [caller] : 1 };
+            totalWeight = 1;
+
+        } else if (votingSystem === 'equal') {
             // Determine votingPower at the current time of this proposal
-            // First, loop thru balances
+            // First, loop thru balances, remove anyone with a 0 balance
             for (let addr in votingPower) {
-                votingPower[addr] = 1;
+                if (votingPower[addr] > 0) {
+                    votingPower[addr] = 1;
+                    totalWeight++;
+                } else {
+                    delete votingPower[addr];
+                }   
             }
         
             // Next, get any members that are in the vault, but not in the balances object
             for (let addr in state.vault) {
-                if (!(addr in balances)) {
-                    totalWeight++;
-                    votingPower[addr] = 1;
+                if (!(addr in votingPower)) {
+                    // Make sure a new address isn't in the vault and if it is, that its balance isn't 0
+                    let totalLockedBalance = 0;
+                    for (let bal of state.vault[addr]) {
+                        totalLockedBalance += bal.balance;
+                    }
+                    if (totalLockedBalance > 0) {
+                        totalWeight++;
+                        votingPower[addr] = 1;
+                    }
                 }
             }
         } else if (votingSystem === 'weighted') {

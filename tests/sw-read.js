@@ -9,7 +9,9 @@ import fs from 'fs';
 
 /******* MODIFY INPUTS */
 
-const contractId = "JdTit7L06F8qpq8i2EBslgeUkvQ_ur2RpjLHORiaimE";
+let contractId = "tZjaCI3N78v8s3AZU8ei22QvqNdwpgqKfWsxBfdtajY";
+contractId = "dcEUAhAQvrgaK5FcTi-cLr6heWtB6zoDUSsc6W8PCC4";
+contractId = "IoFC_bqcG1HbAZ3sU33F7FVmojtqyDLobX5tCRIpbw";
 // const input = { 
 //         function: 'balance',
 //         target: 'ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk'
@@ -37,6 +39,9 @@ const __dirname = path.resolve();
 
 async function test() {
     const arweave = Arweave.init({
+        // host: "arweave.net",
+        // protocol:  "https",
+        // port: "443",
         host: "localhost",
         protocol: "http",
         port: "1984",
@@ -270,8 +275,7 @@ test();
 let query = `query($cursor: String) {
     transactions(
         tags: [ 
-            { name: "Protocol", values: ["AFTR-TEST-v5"] }, 
-            { name: "Contract-Src", values: ["yl0H7WbNAOiJF1VbzJTILdLVH06Pqo2lka6ay5p7jI8"] }
+            { name: "Protocol", values: ["AFTR-PLAY"] }
     ]
         after: $cursor
     ) {
@@ -338,7 +342,7 @@ let query = `query($cursor: String) {
 //     console.log("Page " + i);
 // }
 
-//let aftrContractSrcId = await getContractSourceId("XMqXf1D4NHcSVNfku3vnXPl7mF3iqw-U4OUHRKtjmvo");
+//let aftrContractSrcId = await getContractSourceId(contractId);
 //console.log(aftrContractSrcId);
 
 //let vehicle = await readContract(arweave, "tC4k2NpJoXNDbnBMhQw02o7lmKLqHfsOQcQ9u8wF3a4", undefined, true);

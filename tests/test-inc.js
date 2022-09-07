@@ -9,22 +9,29 @@ import fs from 'fs';
 //     function: "increment"
 // };
 
-const input = {
-    "function": "propose",
-    "recipient": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8",
-    "qty": 300,
-    "type": "burn",
-    "note": "Burn 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
-  }
-const contractId = "5Vzz_FA_WzycrGoU_xV-tQjfQOuuLaKzeitsJwIeUXY";
+// const input = {
+//     "function": "propose",
+//     "recipient": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8",
+//     "qty": 300,
+//     "type": "burn",
+//     "note": "Burn 300 for abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
+//   }
+let input = {
+    "function": "balance",
+    "target": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8"
+};
+const contractId = "mQgkB52ZAi7ip5a-fC8rWSs3CtnlukL3iN8_1QdNRcg";
 
 /******* MODIFY INPUTS */
 
 const arweave = Arweave.init({
-    host: process.env.ARWEAVE_HOST,
-    protocol: process.env.ARWEAVE_PROTOCOL,
-    port: process.env.ARWEAVE_PORT,
-    logging: true
+    // host: process.env.ARWEAVE_HOST,
+    // protocol: process.env.ARWEAVE_PROTOCOL,
+    // port: process.env.ARWEAVE_PORT,
+    // logging: true
+    host: "www.arweave.run",
+    protocol: "https",
+    port: 443
 });
 
 const __dirname = path.resolve();

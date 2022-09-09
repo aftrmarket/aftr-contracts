@@ -36,8 +36,12 @@ export interface StateInterface {
             }
         ],
     },
-    invocations: string[] | [],                     // Required for Foreign Call Protocol (FCP)
-    foreignCalls: ForeignCallInterface[] | [],      // Required for Foreign Call Protocol (FCP)
+    invocations?: string[] | [],                    // Required for Foreign Call Protocol (FCP)
+    foreignCalls?: ForeignCallInterface[] | [],     // Required for Foreign Call Protocol (FCP)
+    
+    claimable: ClaimableInterface[],                // Required for supporting Internal Writes
+    claims: string[],                               // Required for supporting Internal Writes
+    
     settings: Map<string, any>
 }
 
@@ -74,12 +78,8 @@ export interface TransferInterface {
 export interface DepositInterface {
     function: 'deposit',
     txID: string,
-    //*** The following information is to confirm the tx */
-    source?: string,
-    depositBlock?: number,
-    tokenId?: string,
-    target?: string,
-    qty?: number,
+    tokenId: string,
+    qty: number,
     lockLength?: number,
 }
 
@@ -121,4 +121,11 @@ export interface VoteInterface {
     txID: string,
     contract: string,
     input: InputInterface
+  }
+
+  export interface ClaimableInterface {
+    from: string;
+    to: string;
+    qty: number;
+    txID: string;
   }

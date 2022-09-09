@@ -12,6 +12,8 @@
     },
     "invocations": [],
     "foreignCalls": [],
+    "claimable": [],
+    "claims": [],
     "tokens": [
         {
             "tokenId": "6eTVr8IKPNYbMHVcpHFXr-XNaL5hT6zRJXimcP-owmo",

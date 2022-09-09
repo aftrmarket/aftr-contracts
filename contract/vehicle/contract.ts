@@ -497,11 +497,14 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (!input.txID) {
             ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
         }
-        if(!input.tokenId) {
+        if (!input.tokenId) {
             ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
         }
-        if(input.tokenId === SmartWeave.contract.id) {
+        if (input.tokenId === SmartWeave.contract.id) {
             ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
+        }
+        if (!input.qty || typeof +input.qty !== "number" || +input.qty <= 0) {
+            ThrowError("Qty is invalid.");
         }
 
         let lockLength = 0;
@@ -509,18 +512,28 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             lockLength = input.lockLength;
         }
 
-        /*** Ensure transfer interaction was valid */
-        const validatedTx = await validateTransfer(input.tokenId, input.txID);
+        /*** Call the claim function on the depositing contract */
+        const transferResult = await SmartWeave.contracts.write(input.tokenId, {
+            function: "claim",
+            txID: input.txID,
+            qty: input.qty
+        });
 
+        if (transferResult.type !== "ok") {
+            ThrowError("Unable to deposit token " + input.tokenId);
+        }
+
+        // Claimed is ok, so now update the AFTR vehicle's state token object to reflect the deposit
+        const tokenInfo = await getTokenInfo(input.tokenId);
         const txObj = {
             txID: input.txID,
-            tokenId: validatedTx.tokenId,
+            tokenId: input.tokenId,
             source: caller,
-            balance: validatedTx.qty,
-            start: validatedTx.block,
-            name: validatedTx.name,
-            ticker: validatedTx.ticker,
-            logo: validatedTx.logo,
+            balance: input.qty,
+            start: SmartWeave.block.height,
+            name: tokenInfo.name,
+            ticker: tokenInfo.ticker,
+            logo: tokenInfo.logo,
             lockLength: lockLength
         };
 
@@ -535,51 +548,128 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     /*** Begin Foreign Call Protocol (FCP) Implementation */
-    if (input.function === "readOutbox") {
-        // Ensure that a contract ID is passed
-        if (!input.contract) {
-            ThrowError("Missing contract to invoke.");
-        }
+    // if (input.function === "readOutbox") {
+    //     // Ensure that a contract ID is passed
+    //     if (!input.contract) {
+    //         ThrowError("Missing contract to invoke.");
+    //     }
         
-        // Prevent contract from calling itself
-        if (input.contract === SmartWeave.contract.id) {
-            ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
-        }
+    //     // Prevent contract from calling itself
+    //     if (input.contract === SmartWeave.contract.id) {
+    //         ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
+    //     }
       
-        // Read the state of the foreign contract
-        const foreignState = await SmartWeave.contracts.readContractState(input.contract);
+    //     // Read the state of the foreign contract
+    //     const foreignState = await SmartWeave.contracts.readContractState(input.contract);
       
-        // Check if the foreign contract supports the foreign call protocol and compatible with the call
-        if (!foreignState.foreignCalls) {
-            ThrowError("Contract is missing support for foreign calls.");
-        }
+    //     // Check if the foreign contract supports the foreign call protocol and compatible with the call
+    //     if (!foreignState.foreignCalls) {
+    //         ThrowError("Contract is missing support for foreign calls.");
+    //     }
       
-        // Get foreign calls for this contract that have not been executed
-        const calls: ForeignCallInterface[] = foreignState.foreignCalls.filter(
-          (element: ForeignCallInterface) =>
-            element.contract === SmartWeave.contract.id &&
-            //@ts-expect-error
-            !state.invocations.includes(element.txID)
-        );
+    //     // Get foreign calls for this contract that have not been executed
+    //     const calls: ForeignCallInterface[] = foreignState.foreignCalls.filter(
+    //       (element: ForeignCallInterface) =>
+    //         element.contract === SmartWeave.contract.id &&
+    //         //@ts-expect-error
+    //         !state.invocations.includes(element.txID)
+    //     );
       
-        // Run all invocations
-        let res = state;
+    //     // Run all invocations
+    //     let res = state;
       
-        for (const entry of calls) {
-          // Run invocation
-          //@ts-expect-error
-          res = (await handle(res, { caller: input.contract, input: entry.input })).state;
+    //     for (const entry of calls) {
+    //       // Run invocation
+    //       //@ts-expect-error
+    //       res = (await handle(res, { caller: input.contract, input: entry.input })).state;
           
-          // Push invocation to executed invocations
-          //@ts-expect-error
-          res.invocations.push(entry.txID);
-        }
+    //       // Push invocation to executed invocations
+    //       //@ts-expect-error
+    //       res.invocations.push(entry.txID);
+    //     }
       
-        state = res;
-    }
+    //     state = res;
+    // }
 
 
     /*** End FCP */
+
+    /*** BEGIN CROSS CONTRACT COMMUNICATION SUPPORT */
+
+    if (input.function === "allow") {
+        target = input.target;
+        const quantity = input.qty;
+    
+        if (!Number.isInteger(quantity) || quantity === undefined) {
+            ThrowError("Invalid value for quantity. Must be an integer.");
+        }
+        if (!target) {
+            ThrowError("No target specified.");
+        }
+        if (quantity <= 0 || caller === target) {
+            ThrowError("Invalid token transfer.");
+        }
+        if (balances[caller] < quantity) {
+            ThrowError("Caller balance not high enough to make claimable " + quantity + " token(s).");
+        }
+    
+        balances[caller] -= quantity;
+        if (balances[caller] === null || balances[caller] === undefined) {
+            balances[caller] = 0;
+        }
+        state.claimable.push({
+            from: caller,
+            to: target,
+            qty: quantity,
+            txID: SmartWeave.transaction.id,
+        });
+    }
+
+    if (input.function === "claim") {
+        // Claim input: txID
+        const txID = input.txID;
+        // Claim qty
+        const qty = input.qty;
+    
+        if (!state.claimable.length) {
+          ThrowError("Contract has no claims available.");
+        }
+        // Search for txID inside of `claimable`
+        let obj, index;
+        for (let i = 0; i < state.claimable.length; i++) {
+            if (state.claimable[i].txID === txID) {
+                index = i;
+                obj = state.claimable[i];
+            }
+        }
+        if (obj === undefined) {
+            ThrowError("Unable to find claim.");
+        }
+        if (obj.to !== caller) {
+            ThrowError("Claim not addressed to caller.");
+        }
+        if (obj.qty !== qty) {
+            ThrowError("Claiming incorrect quantity of tokens.");
+        }
+        // Check to make sure it hasn't been claimed already
+        for (let i = 0; i < state.claims.length; i++) {
+            if (state.claims[i] === txID) {
+                ThrowError("This claim has already been made.");
+            }
+        }
+        // Not already claimed --> can claim
+        balances[caller] += obj.qty;
+    
+        // remove from claimable
+        state.claimable.splice(index, 1);
+    
+        // add txID to `claims`
+        state.claims.push(txID);
+    }
+
+    /*** END  CROSS CONTRACT COMMUNICATION SUPPORT */
+
+
 
     if (input.function === "multiInteraction") {
         /*** A multi-interaction is being called.  
@@ -792,9 +882,10 @@ function invoke(state, input) {
     });
 }
 
-function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
+async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
     // Loop thru all concluded votes
-    concludedVotes.forEach( vote => {
+    // concludedVotes.forEach( vote => {
+    for (let vote of concludedVotes) {
         let finalQuorum = 0.0;
         let finalSupport = 0.0;
 
@@ -802,7 +893,7 @@ function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
         if (vehicle.ownership === 'single' || vote.yays / vote.totalWeight > support) {
                 vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
                 vote.status = 'passed';
-                modifyVehicle(vehicle, vote);
+                await modifyVehicle(vehicle, vote);
         } else if (vote.nays / vote.totalWeight > support) {
             vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
             vote.status = "failed";
@@ -818,7 +909,7 @@ function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
                 finalSupport = vote.yays / (vote.yays + vote.nays);
                 vote.status = 'passed';
                 vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
-                modifyVehicle(vehicle, vote);
+                await modifyVehicle(vehicle, vote);
             }
         } else {
             // Vote failed
@@ -827,10 +918,10 @@ function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
             finalSupport = vote.yays / (vote.yays + vote.nays);
             vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
         }
-    });
+    };
 }
 
-function modifyVehicle(vehicle, vote) {
+async function modifyVehicle(vehicle, vote) {
     if (vote.type === 'mint' || vote.type === 'addMember') {
         if (vote.recipient in vehicle.balances) {
             // Wallet already exists in state, add tokens
@@ -864,35 +955,51 @@ function modifyVehicle(vehicle, vote) {
         } else {
             vehicle[vote.key] = vote.value;
         }
+    // } else if (vote.type === 'withdrawal') {
+    //     // Find the token object that is to be w/d
+    //     const tokenObj = vehicle.tokens.find( (token) => (token.txID === vote.txID) );
+    //     let input = {
+    //         function: "withdrawal",
+    //         foreignContract: tokenObj.tokenId,
+    //         invocation: {
+    //             function: "transfer",
+    //             target: vote.target,
+    //             qty: vote.qty
+    //         }
+    //     };
+    //     if (vehicle.ownership === "single") {
+    //         // Vehicle can change now, proceed with FCP by calling invoke immediately
+    //         invoke(vehicle, input);
+
+    //         // Update deposits
+    //         /*** Is there a way to validate this amount at a later time if the transfer fails? */
+    //         tokenObj.balance -= vote.qty;
+    //     } else {
+    //         // Votes will be required to process the withdrawal, so add to the withdrawals array of the token object until the vote is passed
+    //         input["voteId"] = vote.id;
+    //         input["processed"] = false;
+    //         input["txID"] = vote.txID;
+    //         if (!tokenObj.withdrawals) {
+    //             tokenObj["withdrawals"] = [];
+    //         }
+    //         tokenObj.withdrawals.push(input);
+    //     }
     } else if (vote.type === 'withdrawal') {
         // Find the token object that is to be w/d
         const tokenObj = vehicle.tokens.find( (token) => (token.txID === vote.txID) );
-        let input = {
-            function: "withdrawal",
-            foreignContract: tokenObj.tokenId,
-            invocation: {
-                function: "transfer",
-                target: vote.target,
-                qty: vote.qty
-            }
-        };
-        if (vehicle.ownership === "single") {
-            // Vehicle can change now, proceed with FCP by calling invoke immediately
-            invoke(vehicle, input);
+        const contractId = tokenObj.tokenId;
+        const wdResult = await SmartWeave.contracts.write(contractId , {
+            function: "transfer",
+            target: vote.target,
+            qty: vote.qty
+        });
 
-            // Update deposits
-            /*** Is there a way to validate this amount at a later time if the transfer fails? */
-            tokenObj.balance -= vote.qty;
-        } else {
-            // Votes will be required to process the withdrawal, so add to the withdrawals array of the token object until the vote is passed
-            input["voteId"] = vote.id;
-            input["processed"] = false;
-            input["txID"] = vote.txID;
-            if (!tokenObj.withdrawals) {
-                tokenObj["withdrawals"] = [];
-            }
-            tokenObj.withdrawals.push(input);
+        if (wdResult.type !== "ok") {
+            ThrowError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
         }
+
+        // Update tokens object to reflect w/d
+        tokenObj.balance -= vote.qty;
     }
 }
 
@@ -912,68 +1019,79 @@ function updateSetting(vehicle, key, value) {
     }
 }
 
-async function validateTransfer(tokenId: string, transferTx: string) {
-    /*** Thanks to @martonlederer for the function */
-
-    // First, make sure interaction occurred
-    const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
-
-    // Read the transaction
-    const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
-
-    let txObj = {
-        tokenId: tokenId,
-        qty: 0,
-        block: SmartWeave.block.height,
-        name: tokenInfo.name,
-        ticker: tokenInfo.ticker,
-        logo: tokenInfo.logo
-    };
-    try {
-        tx.get("tags").forEach((tag) => {
-            if (tag.get("name", { decode: true, string: true }) === "Input") {
-                const input = JSON.parse(tag.get("value", { decode: true, string: true }));
-
-                // Check if the interaction is a transfer
-                if (input.function !== "transfer") {
-                    ThrowError("The interaction is not a transfer.");
-                }
-
-                // Make sure that the target of the transfer transaction is THIS contract
-                if (input.target !== SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value) {
-                    ThrowError("The target of this transfer is not this contract.");
-                }
-
-                txObj.qty = input.qty;
-            }
-        });
-    } catch (err) {
-        //throw new ThrowError("Error validating tags during 'deposit'.  " + err);
-        ThrowError("Error validating tags during 'deposit'.  " + err);
-        //ThrowError("TAGS: " + JSON.stringify(SmartWeave.transaction.tags));
-    }
-
-    return txObj;
-}
-
-async function ensureValidInteraction(contractId: string, interactionId: string) {
-    const contractInteractions = await SmartWeave.contracts.readContractState(contractId, undefined, true);
-
-    // Make sure interaction exists
-    if (!(interactionId in contractInteractions.validity)) {
-        ThrowError("The interaction is not associated with this contract.");
-    }
-
-    // Make sure the transfer was valid
-    if (!contractInteractions.validity[interactionId]) {
-        ThrowError("The interaction was invalid.");
-    }
-
-    const settings: Map<string, any> = new Map(contractInteractions.state.settings);
-
+async function getTokenInfo(contractId: string) {
+    const assetState = await SmartWeave.contracts.readContractState(contractId);
+    const settings: Map<string, any> = new Map(assetState.settings);
+    
     return {
-        name: contractInteractions.state.name,
-        ticker: contractInteractions.state.ticker,
+        name: assetState.name,
+        ticker: assetState.ticker,
         logo: settings.get("communityLogo")
     };
 }
+
+// async function validateTransfer(tokenId: string, transferTx: string) {
+//     /*** Thanks to @martonlederer for the function */
+
+//     // First, make sure interaction occurred
+//     const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
+
+//     // Read the transaction
+//     const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
+
+//     let txObj = {
+//         tokenId: tokenId,
+//         qty: 0,
+//         block: SmartWeave.block.height,
+//         name: tokenInfo.name,
+//         ticker: tokenInfo.ticker,
+//         logo: tokenInfo.logo
+//     };
+//     try {
+//         tx.get("tags").forEach((tag) => {
+//             if (tag.get("name", { decode: true, string: true }) === "Input") {
+//                 const input = JSON.parse(tag.get("value", { decode: true, string: true }));
+
+//                 // Check if the interaction is a transfer
+//                 if (input.function !== "transfer") {
+//                     ThrowError("The interaction is not a transfer.");
+//                 }
+
+//                 // Make sure that the target of the transfer transaction is THIS contract
+//                 if (input.target !== SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value) {
+//                     ThrowError("The target of this transfer is not this contract.");
+//                 }
+
+//                 txObj.qty = input.qty;
+//             }
+//         });
+//     } catch (err) {
+//         //throw new ThrowError("Error validating tags during 'deposit'.  " + err);
+//         ThrowError("Error validating tags during 'deposit'.  " + err);
+//         //ThrowError("TAGS: " + JSON.stringify(SmartWeave.transaction.tags));
+//     }
+
+//     return txObj;
+// }
+
+// async function ensureValidInteraction(contractId: string, interactionId: string) {
+//     const contractInteractions = await SmartWeave.contracts.readContractState(contractId, undefined, true);
+
+//     // Make sure interaction exists
+//     if (!(interactionId in contractInteractions.validity)) {
+//         ThrowError("The interaction is not associated with this contract.");
+//     }
+
+//     // Make sure the transfer was valid
+//     if (!contractInteractions.validity[interactionId]) {
+//         ThrowError("The interaction was invalid.");
+//     }
+
+//     const settings: Map<string, any> = new Map(contractInteractions.state.settings);
+
+//     return {
+//         name: contractInteractions.state.name,
+//         ticker: contractInteractions.state.ticker,
+//         logo: settings.get("communityLogo")
+//     };
+// }

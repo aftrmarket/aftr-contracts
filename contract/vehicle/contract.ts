@@ -658,6 +658,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             }
         }
         // Not already claimed --> can claim
+        if (!balances[caller]) {
+            balances[caller] = 0;
+        }
         balances[caller] += obj.qty;
     
         // remove from claimable

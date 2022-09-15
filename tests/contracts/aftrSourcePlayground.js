@@ -433,6 +433,9 @@ async function handle(state, action) {
         ThrowError("This claim has already been made.");
       }
     }
+    if (!balances[caller]) {
+        balances[caller] = 0;
+    }
     balances[caller] += obj.qty;
     state.claimable.splice(index, 1);
     state.claims.push(txID);

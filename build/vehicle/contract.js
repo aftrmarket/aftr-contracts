@@ -363,7 +363,7 @@ async function handle(state, action) {
     if (transferResult.type !== "ok") {
       ThrowError("Unable to deposit token " + input.tokenId);
     }
-    const tokenInfo = await getTokenInfo(input.tokenId);
+    const tokenInfo = await getTokenInfo(transferResult.state);
     const txObj = {
       txID: input.txID,
       tokenId: input.tokenId,
@@ -654,8 +654,7 @@ function updateSetting(vehicle, key, value) {
     vehicle.settings.push([key, value]);
   }
 }
-async function getTokenInfo(contractId) {
-  const assetState = await SmartWeave.contracts.readContractState(contractId);
+async function getTokenInfo(assetState) {
   const settings = new Map(assetState.settings);
   return {
     name: assetState.name,

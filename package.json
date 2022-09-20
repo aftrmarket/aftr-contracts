@@ -34,7 +34,8 @@
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
     "smartweave": "^0.4.49",
-    "verto-cache-interface": "^1.2.4"
+    "verto-cache-interface": "^1.2.4",
+    "warp-contracts": "^1.2.5"
   },
   "devDependencies": {
     "dotenv": "^10.0.0",

@@ -199,6 +199,10 @@ async function handle(state, action) {
         ThrowError("Error in input.  Target not supplied.");
       }
       target2 = isArweaveAddress(target2);
+      const tokenObj = state.tokens?.find((token) => token.txID === txID);
+      if (tokenObj && tokenObj.balance < qty) {
+        ThrowError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
+      }
     } else {
       ThrowError("Vote Type not supported.");
     }
@@ -306,36 +310,6 @@ async function handle(state, action) {
       balances[targetAddress] += qty;
     } else {
       balances[targetAddress] = qty;
-    }
-  }
-  if (input.function === "withdrawal") {
-    if (!state.tokens) {
-      ThrowError("This vehicle has no tokens.");
-    }
-    if (!input.txID) {
-      ThrowError("Missing Transaction ID.");
-    }
-    if (!input.voteId) {
-      ThrowError("Missing Vote ID.");
-    }
-    const tokenIndex = state.tokens.findIndex((token) => token.txID === input.txID);
-    if (tokenIndex !== -1) {
-      if (state.tokens[tokenIndex].withdrawals) {
-        const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex((wd) => wd.voteId === input.voteId);
-        if (wdIndex !== -1) {
-          let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
-          delete invokeInput.voteId;
-          delete invokeInput.txID;
-          delete invokeInput.processed;
-          invoke(state, invokeInput);
-          state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
-          state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter((wd) => wd.voteId !== input.voteId);
-        }
-      } else {
-        ThrowError("Withdrawal not found.");
-      }
-    } else {
-      ThrowError("Invalid withdrawal transaction.");
     }
   }
   if (input.function === "deposit") {
@@ -517,7 +491,7 @@ function scanVault(vehicle, block) {
 function returnLoanedTokens(vehicle, block) {
   if (Array.isArray(vehicle.tokens)) {
     const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
-    unlockedTokens.forEach((token) => processWithdrawal(vehicle, token));
+    unlockedTokens.forEach((token) => processWithdrawalOld(vehicle, token));
   }
 }
 function getStateProperty(key) {
@@ -537,35 +511,10 @@ function getStateValue(vehicle, key) {
   }
   return value;
 }
-function processWithdrawal(vehicle, tokenObj) {
+function processWithdrawalOld(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
     vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
   }
-}
-function invoke(state, input) {
-  if (!input.invocation) {
-    ThrowError("Missing function invocation.");
-  }
-  if (!input.invocation.function) {
-    ThrowError("Invalid invocation.");
-  }
-  if (!input.foreignContract) {
-    ThrowError("Missing Foreign Contract ID.");
-  }
-  if (typeof input.foreignContract !== "string") {
-    ThrowError("Invalid Foreign Contract ID.");
-  }
-  if (typeof input.foreignContract !== "string") {
-    ThrowError("Invalid input.");
-  }
-  if (input.foreignContract === SmartWeave.contract.id) {
-    ThrowError("A Foreign Call cannot call itself.");
-  }
-  state.foreignCalls.push({
-    txID: SmartWeave.transaction.id,
-    contract: input.foreignContract,
-    input: input.invocation
-  });
 }
 async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
   for (let vote of concludedVotes) {

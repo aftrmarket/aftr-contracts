@@ -261,9 +261,14 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 throw new ContractError("Invalid Value.");
             }
 
+            const validationResponce = validateProperties(key, value);
+            if (validationResponce !== "") {
+                throw new ContractError(validateProperties);
+            }
+
             // Get current value for key in state
             let currentValue = String(getStateValue(state, key));
-
+            
             note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
         } else if (voteType === 'assetDirective') {
             // A vote to direct assets
@@ -769,6 +774,24 @@ function getStateValue(vehicle: StateInterface, key) {
         value = vehicle[key];
     }
     return value;
+}
+function validateProperties(key: string, value: any) {
+    let response = "";
+
+    // Validate Quorum and Support
+    if (key === "settings.quorum" && (value < 0 || value > 1)) {
+        response = "Quorum must be between 0 and 1.";
+    }
+    if (key === "settings.support" && (value < 0 || value > 1)) {
+        response = "Support must be between 0 and 1."
+    }
+
+    // Make sure that owner is a valid value
+    if (key === "creator" && !/[a-z0-9_-]{43}/i.test(value)) {
+        response = "Proposed owner is invalid."
+    }
+
+    return response;
 }
 
 function processWithdrawalOld(vehicle, tokenObj) {

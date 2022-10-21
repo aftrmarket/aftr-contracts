@@ -1,0 +1,14 @@
+[10/19/2022, 6:11:15 PM] GET /mint/bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU/100000000000000 200 20ms 
+[10/19/2022, 6:11:15 PM] GET /tx_anchor 200 4ms 
+[10/19/2022, 6:11:15 PM] GET /price/20343 200 2ms 
+[10/19/2022, 6:11:15 PM] POST /tx 200 47ms 
+[10/19/2022, 6:11:15 PM] GET /tx_anchor 200 3ms 
+[10/19/2022, 6:11:15 PM] GET /price/2251 200 2ms 
+[10/19/2022, 6:11:15 PM] POST /tx 200 28ms 
+[10/19/2022, 6:11:15 PM] GET /tx/BZFxOncpxG0Xq5ZBsYha-7yjK7e5izXZKQenCB-h4Ws 200 18ms 
+[10/19/2022, 6:11:15 PM] GET /BZFxOncpxG0Xq5ZBsYha-7yjK7e5izXZKQenCB-h4Ws 200 12ms 
+[10/19/2022, 6:11:15 PM] GET /BZFxOncpxG0Xq5ZBsYha-7yjK7e5izXZKQenCB-h4Ws 200 5ms 
+[10/19/2022, 6:11:15 PM] GET /tx/ueCrmVKSsl5t0-VmM4zj3Mvz3HY-2UDeVmFLqdk9CLE 200 4ms 
+[10/19/2022, 6:11:15 PM] GET /ueCrmVKSsl5t0-VmM4zj3Mvz3HY-2UDeVmFLqdk9CLE 200 4ms 
+[10/19/2022, 6:11:15 PM] GET /info 200 2ms 
+[10/19/2022, 6:11:15 PM] GET /block/hash/edfds4govkmggelkx9cgnlzlad41qql6ng611mub7zeqpk4ubzoivllfqhb0loh4 200 4ms 

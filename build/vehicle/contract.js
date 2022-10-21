@@ -25,12 +25,7 @@ async function handle(state, action) {
       multiIteration = input.iteration;
     }
   }
-  let block = 0;
-  if (mode === "TEST") {
-    block = 210;
-  } else {
-    block = +SmartWeave.block.height;
-  }
+  let block = mode === "TEST" ? 210 : +SmartWeave.block.height;
   if (input.function === "balance") {
     target = isArweaveAddress(input.target || caller);
     if (typeof target !== "string") {
@@ -325,10 +320,7 @@ async function handle(state, action) {
     if (!input.qty || typeof +input.qty !== "number" || +input.qty <= 0) {
       ThrowError("Qty is invalid.");
     }
-    let lockLength = 0;
-    if (input.lockLength) {
-      lockLength = input.lockLength;
-    }
+    let lockLength = input.lockLength ? input.lockLength : 0;
     const transferResult = await SmartWeave.contracts.write(input.tokenId, {
       function: "claim",
       txID: input.txID,

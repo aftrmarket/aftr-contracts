@@ -52,13 +52,17 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
     /*** */
 
-    let block = 0;
+    // let block = 0;
+    // // @ts-expect-error
+    // if (mode === 'TEST') {
+    //     block = 210;
+    // } else {
+    //     block = +SmartWeave.block.height;
+    // }
+    
+    // Ternary operator - if mode 'TEST', block = 210. Else block = +SmartWeave.block.height
     // @ts-expect-error
-    if (mode === 'TEST') {
-        block = 210;
-    } else {
-        block = +SmartWeave.block.height;
-    }
+    let block = (mode === 'TEST') ? 210 : +SmartWeave.block.height;
 
     if (input.function === "balance") {
         // View balance
@@ -515,10 +519,11 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             ThrowError("Qty is invalid.");
         }
 
-        let lockLength = 0;
-        if (input.lockLength) {
-            lockLength = input.lockLength;
-        }
+        // let lockLength = 0
+        // if (input.lockLength) {
+        //     lockLength = input.lockLength;
+        // }
+        let lockLength = input.lockLength ? input.lockLength : 0;
 
         /*** Call the claim function on the depositing contract */
         const transferResult = await SmartWeave.contracts.write(input.tokenId, {

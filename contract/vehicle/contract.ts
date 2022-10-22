@@ -551,6 +551,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (!target) {
             throw new ContractError("No target specified.");
         }
+        if (target === SmartWeave.contract.id) {
+            throw new ContractError("Can't setup claim to transfer a token to itself.");
+        }
         if (quantity <= 0 || caller === target) {
             throw new ContractError("Invalid token transfer.");
         }

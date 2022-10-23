@@ -9,7 +9,7 @@ The AFTR state follows common practices established by early SmartWeave contract
     balances: {
         [addr: string]: number,                     
     },
-    creator: string,                                // Wallet of creator of vehicle
+    owner: string,                                // Wallet of owner of vehicle
     ownership: 'single' | 'dao',                    // Owned by a single wallet or a DAO
     votingSystem: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped, started, or expired (lock period has expired without being renewed) - CURRENTLY NOT USED

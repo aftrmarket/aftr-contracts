@@ -36,7 +36,7 @@ async function warpTest() {
     // const input = {
     //     function: 'deposit',
     //     type: 'set',
-    //     key: 'creator',
+    //     key: 'owner',
     //     value: "1234"
     // };
     // const { originalTxId } = await contract.writeInteraction(input);

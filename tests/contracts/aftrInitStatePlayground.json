@@ -5,7 +5,7 @@
         "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8": 150000000,
         "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I" : 100000000
     },
-    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "owner" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
     "ownership" : "single",
     "votingSystem": "weighted",
     "status" : "stopped",

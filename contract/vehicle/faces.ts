@@ -4,7 +4,7 @@ export interface StateInterface {
     balances: {
         [addr: string]: number;                 // lessee wallet addr: number of seats leased
     };
-    creator: string;                            // Wallet of creator of vehicle
+    owner: string;                            // Wallet of owner of vehicle
     ownership: 'single' | 'dao';
     votingSystem: 'equal' | 'weighted';        // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired';  // Current not used.  Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)

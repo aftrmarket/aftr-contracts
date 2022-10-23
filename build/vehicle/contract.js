@@ -53,8 +53,8 @@ async function handle(state, action) {
     let totalWeight = 0;
     let votingPower = JSON.parse(JSON.stringify(balances));
     if (state.ownership === "single") {
-      if (caller !== state.creator) {
-        throw new ContractError("Caller is not the creator of the vehicle.");
+      if (caller !== state.owner) {
+        throw new ContractError("Caller is not the owner of the vehicle.");
       }
       votingPower = { [caller]: 1 };
       totalWeight = 1;
@@ -144,8 +144,8 @@ async function handle(state, action) {
         }
       }
       if (voteType === "removeMember") {
-        if (recipient === state.creator) {
-          throw new ContractError("Can't remove creator from balances.");
+        if (recipient === state.owner) {
+          throw new ContractError("Can't remove owner from balances.");
         }
       }
       if (voteType === "addMember") {
@@ -242,7 +242,7 @@ async function handle(state, action) {
       throw new ContractError("Vote does not exist.");
     }
     let voterBalance = 0;
-    if (state.ownership === "single" && caller !== state.creator) {
+    if (state.ownership === "single" && caller !== state.owner) {
       throw new ContractError("Caller is not the owner of the vehicle.");
     } else if (!(caller in vote.votingPower)) {
       throw new ContractError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
@@ -290,8 +290,8 @@ async function handle(state, action) {
     if (SmartWeave.contract.id === target2) {
       throw new ContractError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
     }
-    if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
-      throw new ContractError("Invalid transfer because the creator's balance would be 0.");
+    if (state.ownership === "single" && callerAddress === state.owner && balances[callerAddress] - qty <= 0) {
+      throw new ContractError("Invalid transfer because the owner's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
@@ -510,7 +510,7 @@ function validateProperties(key, value) {
   if (key === "settings.support" && (value < 0 || value > 1)) {
     response = "Support must be between 0 and 1.";
   }
-  if (key === "creator" && !/[a-z0-9_-]{43}/i.test(value)) {
+  if (key === "owner" && !/[a-z0-9_-]{43}/i.test(value)) {
     response = "Proposed owner is invalid.";
   }
   return response;

@@ -1,22 +1,15 @@
-// import { WarpFactory } from "warp-contracts";
+import { WarpFactory } from "warp-contracts";
 import Arweave from "arweave";
+
+const port = 1999
 
 function warpInit() {
     let warp = {};
 
     try {
         const arweave = arweaveInit();
-
-        // Using Warp
-        if (process.env.NODE_ENV === "PROD") {
-            warp = WarpFactory.forMainnet();
-        } else if (process.env.NODE_ENV === "TEST") {
-            warp = WarpFactory.forTestnet(process.env.ARWEAVE_PORT, arweave);
-        } else if (process.env.NODE_ENV === "DEV") {
-            warp = WarpFactory.forLocal(process.env.ARWEAVE_PORT, arweave);
-        } else {
-            warp = WarpFactory.forTestnet();
-        }
+        //@ts-expect-error
+        warp = WarpFactory.forLocal(port, arweave);
     } catch (e) {
         console.log(e);
     }
@@ -27,6 +20,7 @@ async function warpRead(contractId, internalWrites = true) {
     const warp = warpInit();
 
     try {
+        //@ts-expect-error
         const contract = warp.contract(contractId)
             .setEvaluationOptions({
                 internalWrites: internalWrites,
@@ -42,6 +36,7 @@ async function warpRead(contractId, internalWrites = true) {
 async function warpWrite(wallet, contractId, input, internalWrites = true, bundling = true) {
     const warp = warpInit();
     try {
+        //@ts-expect-error
         const contract = warp.contract(contractId)
             .setEvaluationOptions({
                 internalWrites: internalWrites,
@@ -50,6 +45,23 @@ async function warpWrite(wallet, contractId, input, internalWrites = true, bundl
             .connect(wallet);
         const { originalTxId } = await contract.writeInteraction(input);
         return originalTxId;
+    } catch (e) {
+        console.log(e);
+        return "";
+    }
+};
+async function warpDryWrite(wallet, contractId, input, internalWrites = true, bundling = true) {
+    const warp = warpInit();
+    try {
+        //@ts-expect-error
+        const contract = warp.contract(contractId)
+            .setEvaluationOptions({
+                internalWrites: internalWrites,
+                disableBundling: !bundling
+            })
+            .connect(wallet);
+        const state = await contract.dryWrite(input);
+        return state;
     } catch (e) {
         console.log(e);
         return "";
@@ -65,6 +77,7 @@ async function warpCreateContract(wallet, source, initState, currentTags = undef
     let tags = addTags(currentTags, aftr);
     const warp = warpInit();
     try {
+        //@ts-expect-error
         let txIds = await warp.createContract.deploy({
             wallet: wallet,
             initState: initState,
@@ -88,6 +101,7 @@ async function warpCreateFromTx(wallet, initState, srcId, currentTags = undefine
 
     const warp = warpInit();
     try {
+        //@ts-expect-error
         let txIds = await warp.createContract.deployFromSourceTx({
             wallet: wallet,
             initState: initState,
@@ -105,9 +119,9 @@ function arweaveInit() {
     let arweave = {};
     try {
         arweave = Arweave.init({
-            host: process.env.ARWEAVE_HOST,
-            port: process.env.ARWEAVE_PORT,
-            protocol: process.env.ARWEAVE_PROTOCOL,
+            host: "localhost",
+            port: port,
+            protocol: "http",
             timeout: 20000,
             logging: true,
         });
@@ -123,7 +137,7 @@ function addTags(currentTags, aftr = false) {
         tags = currentTags;
     }
     if (aftr) {
-        tags.push({ name: "Protocol", value: process.env.SMARTWEAVE_TAG_PROTOCOL });
+        tags.push({ name: "Protocol", value: "AFTR" });
         tags.push({ name: "Implements", value: ["ANS-110"] });
         tags.push({ name: "Type", value: ["token", "vehicle"] });
     }
@@ -135,6 +149,7 @@ export {
     warpInit,
     warpRead,
     warpWrite,
+    warpDryWrite,
     warpCreateContract,
     warpCreateFromTx,
     arweaveInit,

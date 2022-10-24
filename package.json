@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AFTR smart contracts for the Arweave ecosystem",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "init": "node -r dotenv/config ./tests/init.js",
     "init-play": "node -r dotenv/config ./tests/init-play.js",
@@ -22,7 +23,7 @@
     "build-contract-tests": "node ./scripts/build-tests.js",
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
     "tests": "node ./build/vehicle/contract-new-tests.js",
-    "jest": "jest --detectOpenHandles --testPathPattern=./__tests__/contract.test.ts",
+    "jest": "jest --watch --runInBand --detectOpenHandles --testPathPattern=./__tests__/contract.test.ts",
     "joe-test": "node -r dotenv/config ./tests/joe-test.js"
   },
   "author": "",
@@ -32,6 +33,7 @@
     "@verto/js": "^1.0.0-beta-22",
     "arlocal": "^1.1.58",
     "arweave": "^1.10.18",
+    "babel-preset-env": "^1.7.0",
     "esbuild": "^0.14.1",
     "esm": "^3.2.25",
     "if-env": "^1.0.4",
@@ -40,7 +42,11 @@
     "warp-contracts": "^1.2.13"
   },
   "devDependencies": {
+    "@babel/core": "^7.19.6",
+    "@babel/preset-env": "^7.19.4",
+    "@babel/preset-typescript": "^7.18.6",
     "@types/jest": "^29.2.0",
+    "@types/supertest": "^2.0.12",
     "arweave-jest-fuzzing": "^1.0.1",
     "babel-jest": "^29.2.1",
     "dotenv": "^10.0.0",

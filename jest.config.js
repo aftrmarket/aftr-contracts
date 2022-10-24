@@ -1,8 +1,9 @@
-module.exports = {
-    preset: 'ts-jest',
-    testEnvironment: 'node',
+// jest.config.js
+
+export default {
+    transformIgnorePatterns: ['node_modules/(?!(sucrase)/)'],
     transform: {
-        '^.+\\.ts?$': 'ts-jest',
+        '^.+\\.(js|jsx|ts|tsx|mjs)$': 'ts-jest',
     },
-    transformIgnorePatterns: ['<rootDir>/node_modules/'],
-};
+    // ...the rest of your config
+}

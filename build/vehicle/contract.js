@@ -1,12 +1,4 @@
 // contract/vehicle/contract.ts
-var mode = "PROD";
-function ThrowError(msg) {
-  if (mode === "TEST") {
-    throw "ERROR: " + msg;
-  } else {
-    throw new ContractError(msg);
-  }
-}
 var multiLimit = 1e3;
 var multiIteration = 0;
 async function handle(state, action) {
@@ -20,16 +12,16 @@ async function handle(state, action) {
   const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
   if (typeof input.iteration !== "undefined") {
     if (isNaN(input.iteration)) {
-      ThrowError("Invalid value for iteration.");
+      throw new ContractError("Invalid value for iteration.");
     } else {
       multiIteration = input.iteration;
     }
   }
-  let block = mode === "TEST" ? 210 : +SmartWeave.block.height;
+  const block = +SmartWeave.block.height;
   if (input.function === "balance") {
     target = isArweaveAddress(input.target || caller);
     if (typeof target !== "string") {
-      ThrowError("Must specificy target to get balance for.");
+      throw new ContractError("Must specificy target to get balance for.");
     }
     balance = 0;
     if (target in balances) {
@@ -55,14 +47,14 @@ async function handle(state, action) {
         }
       }
       if (totalBalance === 0) {
-        ThrowError("Caller is not allowed to propose vote.");
+        throw new ContractError("Caller is not allowed to propose vote.");
       }
     }
     let totalWeight = 0;
     let votingPower = JSON.parse(JSON.stringify(balances));
     if (state.ownership === "single") {
       if (caller !== state.creator) {
-        ThrowError("Caller is not the creator of the vehicle.");
+        throw new ContractError("Caller is not the creator of the vehicle.");
       }
       votingPower = { [caller]: 1 };
       totalWeight = 1;
@@ -104,7 +96,7 @@ async function handle(state, action) {
         }
       }
     } else {
-      ThrowError("Invalid voting system.");
+      throw new ContractError("Invalid voting system.");
     }
     let recipient = "";
     if (state.ownership === "single") {
@@ -112,11 +104,11 @@ async function handle(state, action) {
     } else if (!voteLength || typeof voteLength === "undefined") {
       voteLength = settings.get("voteLength");
     } else if (voteLength < 0) {
-      ThrowError("Invalid Vote Length.");
+      throw new ContractError("Invalid Vote Length.");
     }
     if (lockLength || typeof lockLength !== "undefined") {
       if (lockLength < 0) {
-        ThrowError("Invalid Lock Length.");
+        throw new ContractError("Invalid Lock Length.");
       }
     } else {
       lockLength = 0;
@@ -124,15 +116,15 @@ async function handle(state, action) {
     if (!start || typeof start === "undefined") {
       start = block;
     } else if (start < 0 || typeof start !== "number") {
-      ThrowError("Invalid Start value.");
+      throw new ContractError("Invalid Start value.");
     }
     if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
-        ThrowError("Error in input.  Recipient not supplied.");
+        throw new ContractError("Error in input.  Recipient not supplied.");
       }
       recipient = isArweaveAddress(input.recipient);
       if (!qty || !(qty > 0)) {
-        ThrowError("Error in input.  Quantity not supplied or is invalid.");
+        throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
       }
       if (voteType === "mint" || voteType === "addMember" || voteType === "mintLocked") {
         let totalTokens = 0;
@@ -140,25 +132,25 @@ async function handle(state, action) {
           totalTokens += balances[wallet];
         }
         if (totalTokens + qty > Number.MAX_SAFE_INTEGER) {
-          ThrowError("Proposed quantity is too large.");
+          throw new ContractError("Proposed quantity is too large.");
         }
       }
       if (voteType === "burn") {
         if (!balances[recipient]) {
-          ThrowError("Request to burn for recipient not in balances.");
+          throw new ContractError("Request to burn for recipient not in balances.");
         }
         if (qty > balances[recipient]) {
-          ThrowError("Invalid quantity.  Can't burn more than recipient has.");
+          throw new ContractError("Invalid quantity.  Can't burn more than recipient has.");
         }
       }
       if (voteType === "removeMember") {
         if (recipient === state.creator) {
-          ThrowError("Can't remove creator from balances.");
+          throw new ContractError("Can't remove creator from balances.");
         }
       }
       if (voteType === "addMember") {
         if (recipient === SmartWeave.contract.id) {
-          ThrowError("Can't add the vehicle as a member.");
+          throw new ContractError("Can't add the vehicle as a member.");
         }
       }
       if (voteType === "mint") {
@@ -174,37 +166,38 @@ async function handle(state, action) {
       }
     } else if (voteType === "set") {
       if (!key || key === "") {
-        ThrowError("Invalid Key.");
+        throw new ContractError("Invalid Key.");
       }
       if (!value || value === "") {
-        ThrowError("Invalid Value.");
+        throw new ContractError("Invalid Value.");
+      }
+      const validationResponce = validateProperties(key, value);
+      if (validationResponce !== "") {
+        throw new ContractError(validateProperties);
       }
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
     } else if (voteType === "assetDirective") {
     } else if (voteType === "withdrawal") {
       if (!qty || !(qty > 0)) {
-        ThrowError("Error in input.  Quantity not supplied or is invalid.");
+        throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
       }
       if (!input.txID) {
-        ThrowError("Error in input.  No Transaction ID found.");
+        throw new ContractError("Error in input.  No Transaction ID found.");
       }
       txID = input.txID;
       if (!target2) {
-        ThrowError("Error in input.  Target not supplied.");
+        throw new ContractError("Error in input.  Target not supplied.");
       }
       target2 = isArweaveAddress(target2);
       const tokenObj = state.tokens?.find((token) => token.txID === txID);
       if (tokenObj && tokenObj.balance < qty) {
-        ThrowError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
+        throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
       }
     } else {
-      ThrowError("Vote Type not supported.");
+      throw new ContractError("Vote Type not supported.");
     }
-    let voteId = String(block) + "txTEST";
-    if (mode !== "TEST") {
-      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
-    }
+    let voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
     let vote = {
       status: "active",
       type: voteType,
@@ -246,31 +239,31 @@ async function handle(state, action) {
     const cast = input.cast;
     const vote = votes.find((vote2) => vote2.id === voteId);
     if (typeof vote === "undefined") {
-      ThrowError("Vote does not exist.");
+      throw new ContractError("Vote does not exist.");
     }
     let voterBalance = 0;
     if (state.ownership === "single" && caller !== state.creator) {
-      ThrowError("Caller is not the owner of the vehicle.");
+      throw new ContractError("Caller is not the owner of the vehicle.");
     } else if (!(caller in vote.votingPower)) {
-      ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+      throw new ContractError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
     } else {
       voterBalance = vote.votingPower[caller];
     }
     if (voterBalance == 0) {
-      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
+      throw new ContractError("Caller's balance is 0 and therefore isn't allowed to vote.");
     }
     if (vote.status !== "active") {
-      ThrowError("Vote is not active.");
+      throw new ContractError("Vote is not active.");
     }
     if (vote.voted.includes(caller)) {
-      ThrowError("Caller has already voted.");
+      throw new ContractError("Caller has already voted.");
     }
     if (cast === "yay") {
       vote.yays += voterBalance;
     } else if (cast === "nay") {
       vote.nays += voterBalance;
     } else {
-      ThrowError("Invalid vote cast.");
+      throw new ContractError("Invalid vote cast.");
     }
     vote.voted.push(caller);
   }
@@ -280,25 +273,25 @@ async function handle(state, action) {
     const callerAddress = isArweaveAddress(caller);
     const targetAddress = isArweaveAddress(target2);
     if (!Number.isInteger(qty)) {
-      ThrowError('Invalid value for "qty". Must be an integer.');
+      throw new ContractError('Invalid value for "qty". Must be an integer.');
     }
     if (!targetAddress) {
-      ThrowError("No target specified.");
+      throw new ContractError("No target specified.");
     }
     if (qty <= 0 || callerAddress === targetAddress) {
-      ThrowError("Invalid token transfer.");
+      throw new ContractError("Invalid token transfer.");
     }
     if (!(callerAddress in balances)) {
-      ThrowError("Caller doesn't own a balance in the Vehicle.");
+      throw new ContractError("Caller doesn't own a balance in the Vehicle.");
     }
     if (balances[callerAddress] < qty) {
-      ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
+      throw new ContractError(`Caller balance not high enough to send ${qty} token(s)!`);
     }
     if (SmartWeave.contract.id === target2) {
-      ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+      throw new ContractError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
     }
     if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
-      ThrowError("Invalid transfer because the creator's balance would be 0.");
+      throw new ContractError("Invalid transfer because the creator's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
@@ -309,16 +302,16 @@ async function handle(state, action) {
   }
   if (input.function === "deposit") {
     if (!input.txID) {
-      ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+      throw new ContractError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
     }
     if (!input.tokenId) {
-      ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+      throw new ContractError("No token supplied. Tokens were not transferred to the vehicle.");
     }
     if (input.tokenId === SmartWeave.contract.id) {
-      ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
+      throw new ContractError("Deposit not allowed because you can't deposit an asset of itself.");
     }
     if (!input.qty || typeof +input.qty !== "number" || +input.qty <= 0) {
-      ThrowError("Qty is invalid.");
+      throw new ContractError("Qty is invalid.");
     }
     let lockLength = input.lockLength ? input.lockLength : 0;
     const transferResult = await SmartWeave.contracts.write(input.tokenId, {
@@ -327,7 +320,7 @@ async function handle(state, action) {
       qty: input.qty
     });
     if (transferResult.type !== "ok") {
-      ThrowError("Unable to deposit token " + input.tokenId);
+      throw new ContractError("Unable to deposit token " + input.tokenId);
     }
     const tokenInfo = await getTokenInfo(transferResult.state);
     const txObj = {
@@ -350,16 +343,16 @@ async function handle(state, action) {
     target = input.target;
     const quantity = input.qty;
     if (!Number.isInteger(quantity) || quantity === void 0) {
-      ThrowError("Invalid value for quantity. Must be an integer.");
+      throw new ContractError("Invalid value for quantity. Must be an integer.");
     }
     if (!target) {
-      ThrowError("No target specified.");
+      throw new ContractError("No target specified.");
     }
     if (quantity <= 0 || caller === target) {
-      ThrowError("Invalid token transfer.");
+      throw new ContractError("Invalid token transfer.");
     }
     if (balances[caller] < quantity) {
-      ThrowError("Caller balance not high enough to make claimable " + quantity + " token(s).");
+      throw new ContractError("Caller balance not high enough to make claimable " + quantity + " token(s).");
     }
     balances[caller] -= quantity;
     if (balances[caller] === null || balances[caller] === void 0) {
@@ -376,7 +369,7 @@ async function handle(state, action) {
     const txID = input.txID;
     const qty = input.qty;
     if (!state.claimable.length) {
-      ThrowError("Contract has no claims available.");
+      throw new ContractError("Contract has no claims available.");
     }
     let obj, index;
     for (let i = 0; i < state.claimable.length; i++) {
@@ -386,17 +379,17 @@ async function handle(state, action) {
       }
     }
     if (obj === void 0) {
-      ThrowError("Unable to find claim.");
+      throw new ContractError("Unable to find claim.");
     }
     if (obj.to !== caller) {
-      ThrowError("Claim not addressed to caller.");
+      throw new ContractError("Claim not addressed to caller.");
     }
     if (obj.qty !== qty) {
-      ThrowError("Claiming incorrect quantity of tokens.");
+      throw new ContractError("Claiming incorrect quantity of tokens.");
     }
     for (let i = 0; i < state.claims.length; i++) {
       if (state.claims[i] === txID) {
-        ThrowError("This claim has already been made.");
+        throw new ContractError("This claim has already been made.");
       }
     }
     if (!balances[caller]) {
@@ -408,18 +401,18 @@ async function handle(state, action) {
   }
   if (input.function === "multiInteraction") {
     if (typeof input.actions === "undefined") {
-      ThrowError("Invalid Multi-interaction input.");
+      throw new ContractError("Invalid Multi-interaction input.");
     }
     const multiActions = input.actions;
     if (multiActions.length > multiLimit) {
-      ThrowError("The Multi-interactions call exceeds the maximum number of interations.");
+      throw new ContractError("The Multi-interactions call exceeds the maximum number of interations.");
     }
     let iteration = 1;
     let updatedState = state;
     for (let nextAction of multiActions) {
       nextAction.input.iteration = iteration;
       if (nextAction.input.function === "multiInteraction") {
-        ThrowError("Nested Multi-interactions are not allowed.");
+        throw new ContractError("Nested Multi-interactions are not allowed.");
       }
       nextAction.caller = caller;
       let result = await handle(updatedState, nextAction);
@@ -458,7 +451,7 @@ async function handle(state, action) {
 function isArweaveAddress(addy) {
   const address = addy.toString().trim();
   if (!/[a-z0-9_-]{43}/i.test(address)) {
-    ThrowError("Invalid Arweave address.");
+    throw new ContractError("Invalid Arweave address.");
   }
   return address;
 }
@@ -502,6 +495,19 @@ function getStateValue(vehicle, key) {
     value = vehicle[key];
   }
   return value;
+}
+function validateProperties(key, value) {
+  let response = "";
+  if (key === "settings.quorum" && (value < 0 || value > 1)) {
+    response = "Quorum must be between 0 and 1.";
+  }
+  if (key === "settings.support" && (value < 0 || value > 1)) {
+    response = "Support must be between 0 and 1.";
+  }
+  if (key === "creator" && !/[a-z0-9_-]{43}/i.test(value)) {
+    response = "Proposed owner is invalid.";
+  }
+  return response;
 }
 function processWithdrawalOld(vehicle, tokenObj) {
   if (Array.isArray(vehicle.tokens)) {
@@ -577,7 +583,7 @@ async function modifyVehicle(vehicle, vote) {
       qty: vote.qty
     });
     if (wdResult.type !== "ok") {
-      ThrowError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
+      throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
     }
     tokenObj.balance -= vote.qty;
   }

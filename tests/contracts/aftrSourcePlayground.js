@@ -66,8 +66,8 @@ async function handle(state, action) {
     let totalWeight = 0;
     let votingPower = JSON.parse(JSON.stringify(balances));
     if (state.ownership === "single") {
-      if (caller !== state.creator) {
-        ThrowError("Caller is not the creator of the vehicle.");
+      if (caller !== state.owner) {
+        ThrowError("Caller is not the owner of the vehicle.");
       }
       votingPower = { [caller]: 1 };
       totalWeight = 1;
@@ -157,8 +157,8 @@ async function handle(state, action) {
         }
       }
       if (voteType === "removeMember") {
-        if (recipient === state.creator) {
-          ThrowError("Can't remove creator from balances.");
+        if (recipient === state.owner) {
+          ThrowError("Can't remove owner from balances.");
         }
       }
       if (voteType === "addMember") {
@@ -250,7 +250,7 @@ async function handle(state, action) {
       ThrowError("Vote does not exist.");
     }
     let voterBalance = 0;
-    if (state.ownership === "single" && caller !== state.creator) {
+    if (state.ownership === "single" && caller !== state.owner) {
       ThrowError("Caller is not the owner of the vehicle.");
     } else if (!(caller in vote.votingPower)) {
       ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
@@ -298,8 +298,8 @@ async function handle(state, action) {
     if (SmartWeave.contract.id === target2) {
       ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
     }
-    if (state.ownership === "single" && callerAddress === state.creator && balances[callerAddress] - qty <= 0) {
-      ThrowError("Invalid transfer because the creator's balance would be 0.");
+    if (state.ownership === "single" && callerAddress === state.owner && balances[callerAddress] - qty <= 0) {
+      ThrowError("Invalid transfer because the owner's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {

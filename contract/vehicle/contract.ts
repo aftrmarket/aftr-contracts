@@ -112,9 +112,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let votingPower = JSON.parse(JSON.stringify(balances));
 
         if (state.ownership === 'single') {
-            // Validate - Single ownership, so caller must be creator
-            if (caller !== state.creator) {
-                throw new ContractError("Caller is not the creator of the vehicle.");
+            // Validate - Single ownership, so caller must be owner
+            if (caller !== state.owner) {
+                throw new ContractError("Caller is not the owner of the vehicle.");
             }
 
             // votingPower and totalWeight is already known
@@ -227,10 +227,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 }
             }
 
-            // Check for trying to remove creator
+            // Check for trying to remove owner
             if (voteType === 'removeMember') {
-                if (recipient === state.creator) {
-                    throw new ContractError("Can't remove creator from balances.");
+                if (recipient === state.owner) {
+                    throw new ContractError("Can't remove owner from balances.");
                 }
             }
 
@@ -353,7 +353,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Is caller allowed to vote?  Check votingPower for this vote
         let voterBalance = 0;
 
-        if (state.ownership === 'single' && caller !== state.creator) {
+        if (state.ownership === 'single' && caller !== state.owner) {
             throw new ContractError("Caller is not the owner of the vehicle.");
 
             //@ts-expect-error
@@ -422,9 +422,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             throw new ContractError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
         }
 
-        // if new qty is <= 0 and the caller is the creator of a single owner vehicle, the transfer is not allowed
-        if ((state.ownership === "single") && (callerAddress === state.creator) && (balances[callerAddress] - qty <= 0)) {
-            throw new ContractError("Invalid transfer because the creator's balance would be 0.");
+        // if new qty is <= 0 and the caller is the owner of a single owner vehicle, the transfer is not allowed
+        if ((state.ownership === "single") && (callerAddress === state.owner) && (balances[callerAddress] - qty <= 0)) {
+            throw new ContractError("Invalid transfer because the owner's balance would be 0.");
         }
 
         balances[callerAddress] -= qty;
@@ -551,6 +551,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
         if (!target) {
             throw new ContractError("No target specified.");
+        }
+        if (target === SmartWeave.contract.id) {
+            throw new ContractError("Can't setup claim to transfer a token to itself.");
         }
         if (quantity <= 0 || caller === target) {
             throw new ContractError("Invalid token transfer.");
@@ -788,7 +791,7 @@ function validateProperties(key: string, value: any) {
     }
 
     // Make sure that owner is a valid value
-    if (key === "creator" && !/[a-z0-9_-]{43}/i.test(value)) {
+    if (key === "owner" && !/[a-z0-9_-]{43}/i.test(value)) {
         response = "Proposed owner is invalid."
     }
 

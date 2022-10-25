@@ -8,6 +8,7 @@ import path from 'path';
 import request from 'supertest';
 
 import { warpInit, warpRead, warpWrite, warpDryWrite, warpCreateContract, warpCreateFromTx, arweaveInit } from './utils/warpUtils';
+import { Wallet, WalletGenerator } from './utils/walletUtils';
 
 
 /***
@@ -25,8 +26,6 @@ import { warpInit, warpRead, warpWrite, warpDryWrite, warpCreateContract, warpCr
  */
 
 let contractSrc: string;
-let wallet: JWKInterface;
-let walletAddress: string;
 let initialState: PstState;
 let warp: Warp;
 let pst: PstContract;
@@ -34,20 +33,16 @@ let pst: PstContract;
 let arweave: Arweave;
 let arlocal: ArLocal;
 let port = 1999;
+let walletGenerator: WalletGenerator;
+
 // jest.setTimeout(1200000);
 
 
 describe("Test the AFTR Contract", () => {
     let AFTR_CONTRACT_ID: string;
     let AFTR_SRC_ID: string;
-
-    let wallet: {
-        address: string;
-        jwk: JWKInterface | undefined;
-    } = {
-        address: "",
-        jwk: undefined
-    };
+    let wallets: Wallet[] = [];
+    let wallet: Wallet;
 
     beforeAll(async () => {
         arlocal = new ArLocal(port);
@@ -56,14 +51,22 @@ describe("Test the AFTR Contract", () => {
 
         //@ts-ignore
         arweave = arweaveInit();
+        walletGenerator = new WalletGenerator(arweave);
 
-        wallet.jwk = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-wallet.json'), 'utf-8'));
-        wallet.address = await arweave.wallets.jwkToAddress(wallet.jwk);
+        // wallet.jwk = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-wallet.json'), 'utf-8'));
+        // wallet.address = await arweave.wallets.jwkToAddress(wallet.jwk);
+        wallets = await walletGenerator.generate();
+        wallet = wallets[0];
+
+        console.log(wallets);
+
 
         // Give wallet a balance
         const server = "http://localhost:" + port;
         const route = '/mint/' + wallet.address + '/100000000000000';     // Amount in Winstons
         const mintRes = await request(server).get(route);
+
+        console.log(wallet.jwk);
 
         // Create the AFTR vehicles
         const contractSource = fs.readFileSync(path.join(__dirname, '../build/vehicle/contract.js'), "utf8");
@@ -73,25 +76,42 @@ describe("Test the AFTR Contract", () => {
 
         AFTR_CONTRACT_ID = txIds.contractTxId;
         AFTR_SRC_ID = txIds.srcTxId;
-    })
+    });
 
     afterAll(async () => {
         // After we are done with our tests, let's close the connection.
         await arlocal.stop();
-    })
+    });
 
     /* test_balance */
-    it('should return balance for target address', async () => {
-        const input = {
+    it('should return balance result for target address', async () => {
+        let input = {
             "function": "balance",
             "target": wallet.address
         };
-
-        const res = await warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input);
+        // warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input) returns a JSON object containing the result and the state of the vehicle
+        let res = (await warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input)).result;
         console.log(res);
-        expect(res.result.target).toBe("bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU");
-        expect(res.result.balance).toBe(25000);
-        expect(res.result.vaultBal).toBe(0);
+        expect(res.target).toBe(wallet.address);
+        expect(res.balance).toBe(0);
+        expect(res.vaultBal).toBe(0);
+
+        /* < Testing no address ? > */
+        // input.target = ""
+        // try {
+        //     res = await warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input);
+        // } catch (e) {
+        //     console.log(e);
+        // }
+        // console.log("newRes: " + res.result);
+    });
+
+    it('should transfer tokens from Alice to Bob', async () => {
+        let input = {
+            "function": "transfer",
+            "target": "",
+            "qty": 1,
+        }
     })
 
 });

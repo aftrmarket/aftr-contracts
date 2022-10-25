@@ -1,7 +1,7 @@
 import { WarpFactory } from "warp-contracts";
 import Arweave from "arweave";
 
-const port = 1999
+const PORT = 1999
 
 function warpInit() {
     let warp = {};
@@ -9,7 +9,7 @@ function warpInit() {
     try {
         const arweave = arweaveInit();
         //@ts-expect-error
-        warp = WarpFactory.forLocal(port, arweave);
+        warp = WarpFactory.forLocal(PORT, arweave);
     } catch (e) {
         console.log(e);
     }
@@ -120,7 +120,7 @@ function arweaveInit() {
     try {
         arweave = Arweave.init({
             host: "localhost",
-            port: port,
+            port: PORT,
             protocol: "http",
             timeout: 20000,
             logging: true,

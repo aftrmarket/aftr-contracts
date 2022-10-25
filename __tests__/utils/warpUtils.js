@@ -153,5 +153,6 @@ export {
     warpCreateContract,
     warpCreateFromTx,
     arweaveInit,
-    addTags
+    addTags,
+    PORT
 };

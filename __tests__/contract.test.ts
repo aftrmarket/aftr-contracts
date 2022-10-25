@@ -7,7 +7,7 @@ import fsAsync from 'fs/promises';
 import path from 'path';
 import request from 'supertest';
 
-import { warpInit, warpRead, warpWrite, warpDryWrite, warpCreateContract, warpCreateFromTx, arweaveInit } from './utils/warpUtils';
+import { warpInit, warpRead, warpWrite, warpDryWrite, warpCreateContract, warpCreateFromTx, arweaveInit, PORT } from './utils/warpUtils';
 import { Wallet, WalletGenerator } from './utils/walletUtils';
 
 
@@ -32,11 +32,9 @@ let pst: PstContract;
 
 let arweave: Arweave;
 let arlocal: ArLocal;
-let port = 1999;
 let walletGenerator: WalletGenerator;
 
 // jest.setTimeout(1200000);
-
 
 describe("Test the AFTR Contract", () => {
     let AFTR_CONTRACT_ID: string;
@@ -45,28 +43,28 @@ describe("Test the AFTR Contract", () => {
     let wallet: Wallet;
 
     beforeAll(async () => {
-        arlocal = new ArLocal(port);
+        arlocal = new ArLocal(PORT);
         // Start is a Promise, we need to start it inside an async function.
         await arlocal.start();
+
+        /**
+         * Calling of arweaveInit multiple times through warpUtils
+         */
 
         //@ts-ignore
         arweave = arweaveInit();
         walletGenerator = new WalletGenerator(arweave);
 
+        // To load a test wallet --- OLD
         // wallet.jwk = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-wallet.json'), 'utf-8'));
         // wallet.address = await arweave.wallets.jwkToAddress(wallet.jwk);
+
         wallets = await walletGenerator.generate();
         wallet = wallets[0];
 
-        console.log(wallets);
-
-
-        // Give wallet a balance
-        const server = "http://localhost:" + port;
-        const route = '/mint/' + wallet.address + '/100000000000000';     // Amount in Winstons
-        const mintRes = await request(server).get(route);
-
-        console.log(wallet.jwk);
+        // Getting the balance ...
+        // let res = (await request('http://localhost:1999').get(/wallet/ + wallet.address + '/balance'));
+        // console.log(res.body);
 
         // Create the AFTR vehicles
         const contractSource = fs.readFileSync(path.join(__dirname, '../build/vehicle/contract.js'), "utf8");

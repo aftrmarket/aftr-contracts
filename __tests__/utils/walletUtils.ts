@@ -43,6 +43,12 @@ class WalletGenerator {
             let id = WalletGenerator.id++;
             let jwk = await this.arweave.wallets.generate();
             let address = await this.arweave.wallets.getAddress(jwk);
+
+            // Give wallet a balance
+            const server = "http://localhost:" + this.arweave.getConfig().api.port;
+            const route = '/mint/' + address + '/100000000000000';     // Amount in Winstons
+            const mintRes = await request(server).get(route);
+
             wallets.push(new Wallet(id, jwk, address));
         }
         return wallets;

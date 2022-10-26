@@ -40,18 +40,40 @@ class WalletGenerator {
         const many = n != 1;
         let wallets = [];
         for (; n > 0; n--) {
-            let id = WalletGenerator.id++;
-            let jwk = await this.arweave.wallets.generate();
-            let address = await this.arweave.wallets.getAddress(jwk);
-
-            // Give wallet a balance
-            const server = "http://localhost:" + this.arweave.getConfig().api.port;
-            const route = '/mint/' + address + '/100000000000000';     // Amount in Winstons
-            const mintRes = await request(server).get(route);
-
-            wallets.push(new Wallet(id, jwk, address));
+            wallets.push(await this.buildWallet());
         }
         return wallets;
+    }
+
+    async buildWallet() {
+        let id = WalletGenerator.id++;
+        let jwk = await this.arweave.wallets.generate();
+        let address = await this.arweave.wallets.getAddress(jwk);
+
+        // Give wallet a balance
+        const server = "http://localhost:" + this.arweave.getConfig().api.port;
+        const route = '/mint/' + address + '/100000000000000';     // Amount in Winstons
+        const mintRes = await request(server).get(route);
+
+        return new Wallet(id, jwk, address);
+    }
+
+    /**
+     * Build a wallet from a JSON file
+     * @param filename Must be inside of /__tests__/utils/
+     * @returns as Wallet with given jwk
+     */
+    async buildWalletFromFile(filename: string) {
+        let id = WalletGenerator.id++;
+        let jwk = JSON.parse(fs.readFileSync(path.join(__dirname, filename), 'utf-8'));
+        let address = await this.arweave.wallets.getAddress(jwk);
+
+        // Give wallet a balance
+        const server = "http://localhost:" + this.arweave.getConfig().api.port;
+        const route = '/mint/' + address + '/100000000000000';     // Amount in Winstons
+        const mintRes = await request(server).get(route);
+
+        return new Wallet(id, jwk, address);
     }
 }
 

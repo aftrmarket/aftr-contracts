@@ -46,7 +46,7 @@
     "vault": {},
     "votes": [],
     "status": "started",
-    "creator": "bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU",
+    "owner": "bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU",
     "ownership": "single",
     "votingSystem": "weighted",
     "settings": [

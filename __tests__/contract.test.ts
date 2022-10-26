@@ -25,6 +25,10 @@ import { Wallet, WalletGenerator } from './utils/walletUtils';
  * Spin down
  */
 
+/**
+ *     function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'multiInteraction';
+ */
+
 let contractSrc: string;
 let initialState: PstState;
 let warp: Warp;
@@ -32,15 +36,17 @@ let pst: PstContract;
 
 let arweave: Arweave;
 let arlocal: ArLocal;
-let walletGenerator: WalletGenerator;
+let walletBuilder: WalletGenerator;
 
 // jest.setTimeout(1200000);
 
 describe("Test the AFTR Contract", () => {
-    let AFTR_CONTRACT_ID: string;
+    let AFTR_SINGLE_OWNED_CONTRACT_ID: string;
+    let AFTR_DAO_OWNED_CONTRACT_ID: string;
     let AFTR_SRC_ID: string;
     let wallets: Wallet[] = [];
     let wallet: Wallet;
+    let master: Wallet;
 
     beforeAll(async () => {
         arlocal = new ArLocal(PORT);
@@ -53,26 +59,31 @@ describe("Test the AFTR Contract", () => {
 
         //@ts-ignore
         arweave = arweaveInit();
-        walletGenerator = new WalletGenerator(arweave);
+        walletBuilder = new WalletGenerator(arweave);
+        master = await walletBuilder.buildWalletFromFile('test-wallet.json');
 
-        // To load a test wallet --- OLD
-        // wallet.jwk = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-wallet.json'), 'utf-8'));
-        // wallet.address = await arweave.wallets.jwkToAddress(wallet.jwk);
-
-        wallets = await walletGenerator.generate();
+        wallets = await walletBuilder.generate();
         wallet = wallets[0];
 
-        // Getting the balance ...
+        // Getting the balance of an Arweave wallet ...
         // let res = (await request('http://localhost:1999').get(/wallet/ + wallet.address + '/balance'));
         // console.log(res.body);
 
         // Create the AFTR vehicles
         const contractSource = fs.readFileSync(path.join(__dirname, '../build/vehicle/contract.js'), "utf8");
-        const initState = fs.readFileSync(path.join(__dirname, './files/aftrBaseInitState.json'), "utf8");
+        const singleOwnedInitState = fs.readFileSync(path.join(__dirname, './files/aftrBaseInitState-singleOwned.json'), "utf8");
+        const daoOwnedInitState = fs.readFileSync(path.join(__dirname, './files/aftrBaseInitState-daoOwned.json'), "utf8");
 
-        let txIds = await warpCreateContract(wallet.jwk, contractSource, initState, undefined, true);
+        let txIds = {
+            contractTxId: "",
+            srcTxId: ""
+        };
+        txIds = await warpCreateContract(master.jwk, contractSource, singleOwnedInitState, undefined, true);
+        AFTR_SINGLE_OWNED_CONTRACT_ID = txIds.contractTxId;
 
-        AFTR_CONTRACT_ID = txIds.contractTxId;
+        txIds = await warpCreateContract(master.jwk, contractSource, daoOwnedInitState, undefined, true);
+        AFTR_DAO_OWNED_CONTRACT_ID = txIds.contractTxId;
+
         AFTR_SRC_ID = txIds.srcTxId;
     });
 
@@ -81,14 +92,27 @@ describe("Test the AFTR Contract", () => {
         await arlocal.stop();
     });
 
-    /* test_balance */
-    it('should return balance result for target address', async () => {
+    /* test balance (MASTER) */
+    it('should return balance result for MASTER address', async () => {
+        let input = {
+            "function": "balance",
+            "target": master.address
+        };
+        let res = (await warpDryWrite(master.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, input)).result;
+
+        expect(res.target).toBe(master.address);
+        expect(res.balance).toBe(25000);
+        expect(res.vaultBal).toBe(0);
+    });
+
+    /* test balance (TARGET) */
+    it('should return balance result for TARGET address', async () => {
         let input = {
             "function": "balance",
             "target": wallet.address
         };
         // warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input) returns a JSON object containing the result and the state of the vehicle
-        let res = (await warpDryWrite(wallet.jwk, AFTR_CONTRACT_ID, input)).result;
+        let res = (await warpDryWrite(wallet.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, input)).result;
         console.log(res);
         expect(res.target).toBe(wallet.address);
         expect(res.balance).toBe(0);
@@ -104,12 +128,77 @@ describe("Test the AFTR Contract", () => {
         // console.log("newRes: " + res.result);
     });
 
-    it('should transfer tokens from Alice to Bob', async () => {
+    /* test transfer */
+    it('should transfer tokens from Alice to Bob within the vehicle', async () => {
+        let wallet = wallets[0];
+        let amt = 1299;
+
+        let alice = master;
+        let bob = wallet;
+        let balances = {
+            alice: await getBalance(alice),
+            bob: await getBalance(bob)
+        }
+
         let input = {
             "function": "transfer",
-            "target": "",
-            "qty": 1,
+            "target": bob.address,
+            "qty": amt,
         }
-    })
+        // Write the transaction
+        let result = await warpWrite(alice.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, input);
 
+        expect(await getBalance(alice)).toBe(balances.alice - amt);
+        expect(await getBalance(bob)).toBe(balances.bob + amt);
+    });
+
+    /* test set quorum */
+    it('should set the quorum of the SINGLE-OWNED vehicle', async () => {
+        let quorum = 0.51;
+        let input = {
+            "function": "propose",
+            "type": "set",
+            "key": "settings.quorum",
+            "value": quorum
+        }
+        let result = await warpWrite(master.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, input);
+        let state = (await warpRead(AFTR_SINGLE_OWNED_CONTRACT_ID)).state;
+
+        /** 'state' object has a ... Why not a JSON obj?
+         *   Why making a Map of the array
+         * settings: [
+            [ 'quorum', 0.5 ],
+            [ 'support', 0.5 ],
+            [ 'voteLength', 2000 ],
+            [ 'lockMinLength', 100 ],
+            [ 'lockMaxLength', 10000 ],
+            [ 'communityLogo', 'nZr8RcHYY2XXloKcxtgrbssBdpvz6C2ifM92QvkYkgg' ],
+            [ 'evolve', null ]
+        ]
+         */
+        let settings = new Map(state.settings);
+        expect(settings.get('quorum')).toBe(0.51);
+    });
+
+    it('', async () => {
+        let quorum = 0.51
+        let input = {
+            "function": "propose",
+            "type": "set",
+            "key": "settings.quorum",
+            "value": quorum
+        }
+        let result = await warpWrite(master.jwk, AFTR_DAO_OWNED_CONTRACT_ID, input);
+        let state = (await warpRead(AFTR_DAO_OWNED_CONTRACT_ID)).state;
+    });
+
+    async function getBalance(wallet: Wallet): Promise<number> {
+        let input = {
+            "function": "balance",
+            "target": wallet.address
+        };
+        let res = (await warpDryWrite(wallet.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, input)).result;
+        return res.balance;
+    }
 });
+

@@ -74,7 +74,9 @@ async function warpCreateContract(wallet, source, initState, currentTags = undef
      * { contractTxId: string, srcTxId: string }
      */
 
+    // TODO: Handle tag logic in this function ?
     let tags = addTags(currentTags, aftr);
+
     const warp = warpInit();
     try {
         //@ts-expect-error

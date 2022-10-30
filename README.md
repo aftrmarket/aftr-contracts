@@ -85,7 +85,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal' | 'externalInteraction';
+    type?: 'mint' | 'burn' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -116,8 +116,7 @@ All changes to the vehicle state with the exception of deposits are handled thro
 - addMember - A vote to add a member to the vehicle and minting tokens for that new member (add a wallet to the balance).
 - mintLocked - A vote to mint locked tokens for a member of the vehicle (i.e. adding a member balance to the vault).
 - removeMember - A vote to remove a member of the vehicle, thus burning all their tokens as well.
-- assetDirective - A vote to direct assets (tokens object) from the vehicle.
-- withdrawal - A vote to withdrawal assets from the vehicle and transfer them to another wallet.
+- withdrawal - A vote to withdrawal assets from the vehicle and transfer them to another wallet. This removes the balance from the vehicle's token object and transfers the balance from the vehicle to the wallet inside the asset's contract.
 - externalInteraction - A vote to sent an interaction to another contract.
 
 ### ClaimableInterface

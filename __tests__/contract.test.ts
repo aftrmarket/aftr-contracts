@@ -180,7 +180,7 @@ describe("Test the AFTR Contract", () => {
         expect(settings.get('quorum')).toBe(0.51);
     });
 
-    it('', async () => {
+    it('should propose a vote to the DAO-OWNED vehicle', async () => {
         let quorum = 0.51
         let input = {
             "function": "propose",
@@ -201,4 +201,6 @@ describe("Test the AFTR Contract", () => {
         return res.balance;
     }
 });
+
+
 

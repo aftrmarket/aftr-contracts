@@ -14,6 +14,7 @@
     "test-create": "node -r dotenv/config ./tests/test-create.js",
     "sw-read": "node -r dotenv/config ./tests/sw-read.js",
     "warp-test": "node -r dotenv/config ./tests/warp-test.js",
+    "evolve-test": "node -r dotenv/config ./tests/evolve-test.js",
     "genkey": "node -r dotenv/config ./tests/genkey.js",
     "test-inc": "node -r dotenv/config ./tests/test-inc.js",
     "test-vote": "node -r dotenv/config ./tests/test-vote.js",

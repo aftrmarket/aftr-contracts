@@ -26,6 +26,7 @@ The AFTR state follows common practices established by early SmartWeave contract
     ],
     claimable: ClaimableInterface[],                // Required for Internal Writes
     claims: string[],                               // Required for Internal Writes
+    evolve?: string,
     settings: Map<string, any>
 }
 ```
@@ -42,8 +43,7 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
       ["communityAppUrl", string],
       ["communityDiscussionLinks", string],
       ["communityDescription", string],
-      ["communityLogo", string],
-      ["evolve", string]                    // Default value is null
+      ["communityLogo", string]
   ]
 ```
 
@@ -85,7 +85,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction';
+    type?: 'mint' | 'burn' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -117,7 +117,8 @@ All changes to the vehicle state with the exception of deposits are handled thro
 - mintLocked - A vote to mint locked tokens for a member of the vehicle (i.e. adding a member balance to the vault).
 - removeMember - A vote to remove a member of the vehicle, thus burning all their tokens as well.
 - withdrawal - A vote to withdrawal assets from the vehicle and transfer them to another wallet. This removes the balance from the vehicle's token object and transfers the balance from the vehicle to the wallet inside the asset's contract.
-- externalInteraction - A vote to sent an interaction to another contract.
+- externalInteraction - A vote to send an interaction to another contract.
+- evolve - A vote to evolve the contract to a new source. Expects a new contract source ID in the value property.
 
 ### ClaimableInterface
 The ClaimableInterface is used when an Allow interaction is called. When an Allow interaction is called on a vehicle, a Claimable object is pushed onto the Claimable array telling the vehicle that another contract will come to claim these tokens in the object.
@@ -131,6 +132,17 @@ ClaimableInterface {
 ```
 
 ## Functions in the AFTR Smart Contract
+
+### Evolve
+The evolve function allows the vehicle to be updated to a new source contract. 
+```typescript
+const evolveAction = {
+    input: {
+        function: 'evolve',
+        value: '<NEW-CONTRACT-SOURCE-ID>',
+    }
+};
+```
 
 ### Balance
 The balance function is used to view a balance of a vehicle member. If a target is not supplied in the input, then the balance of the caller is returned.
@@ -188,8 +200,6 @@ const allowDepId = await warpWrite(vehicleId, inputDep);
 
 ### Withdrawal
 In an AFTR Contract, a withdrawal is proposed and then the vehicle contract determines when to process the withdrawal based on a successful vote result (If the vehicle is a single owner vehicle, the vote is passed immediately).  Once a withdrawal vote is passed, the vehicle contract calls the transfer function on the withdrawn asset's contract using an internal write.  Once that interaction completes successfully, the vehicle contract then subtracts the withdrawn balance from the token object in the vehicle.
-
-Next, another interaction needs to be sent to the AFTR contract to read its outbox object to complete the 2nd stage of the FCP.
 
 #### Sample Withdrawal Action
 ```typescript

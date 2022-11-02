@@ -42,7 +42,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     const block = +SmartWeave.block.height;
 
-
     if (input.function === "balance") {
         // View balance
 
@@ -196,6 +195,14 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             throw new ContractError("Invalid Start value.");
         }
 
+        if (voteType === "evolve") {
+            if (!input.value) {
+                throw new ContractError("Error in input.  No value exists.");
+            }
+            const evolveSrcId = isArweaveAddress(input.value);
+            note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
+        }
+
         if (voteType === 'mint' || voteType === 'burn' || voteType === 'mintLocked' || voteType === 'addMember' || voteType === 'removeMember') {
             if (!input.recipient) {
                 throw new ContractError("Error in input.  Recipient not supplied.");
@@ -268,12 +275,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
             // Get current value for key in state
             let currentValue = String(getStateValue(state, key));
-            
-            note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
-        } else if (voteType === 'assetDirective') {
-            // A vote to direct assets
-            /**** FUTURE ADD */
-            
+            note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);           
         } else if (voteType === 'withdrawal') {
             if (!(qty) || !(qty > 0)) {
                 throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
@@ -293,7 +295,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             if (tokenObj && tokenObj.balance < qty) {
                 throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
             }
-
         } else {
             throw new ContractError("Vote Type not supported.");
         }
@@ -434,55 +435,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             balances[targetAddress] = qty;
         }
     }
-
-    /*** This is the original w/d function that worked with FCP */
-    // if (input.function === "withdrawal") {
-    //     if (!state.tokens) {
-    //         throw new ContractError("This vehicle has no tokens.")
-    //     }
-
-    //     if (!input.txID) {
-    //         throw new ContractError("Missing Transaction ID.");
-    //     }
-    //     if (!input.voteId) {
-    //         throw new ContractError("Missing Vote ID.")
-    //     }
-
-    //     // Is the transaction approved?
-    //     //@ts-expect-error
-    //     const tokenIndex = state.tokens.findIndex(token => token.txID === input.txID);
-    //     if (tokenIndex !== -1) {
-    //         //@ts-expect-error
-    //         if (state.tokens[tokenIndex].withdrawals) {
-    //             //@ts-expect-error
-    //             const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex( wd => wd.voteId === input.voteId);
-                            
-    //             if (wdIndex !== -1) {
-    //                 //@ts-expect-error
-    //                 let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
-    //                 delete invokeInput.voteId;
-    //                 delete invokeInput.txID;
-    //                 delete invokeInput.processed;
-
-    //                 // Add to foreignCalls array just like an invoke in a normal contract would
-    //                 invoke(state, invokeInput);
-
-    //                 // Update deposits
-    //                 //@ts-expect-error
-    //                 state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
-
-    //                 // Remove withdrawals object from the token object
-    //                 //@ts-expect-error
-    //                 state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter( wd => wd.voteId !== input.voteId);
-    //         }
-            
-    //         } else {
-    //             throw new ContractError("Withdrawal not found.");
-    //         }
-    //     } else {
-    //         throw new ContractError("Invalid withdrawal transaction.");
-    //     }
-    // }
 
     if (input.function === 'deposit') {
         // Transfer tokens into vehicle
@@ -689,7 +641,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         // Check for any expired loaned tokens
         if (state.tokens) {
-            returnLoanedTokens(state, block);
+            await returnLoanedTokens(state, block);
         }
     }
 
@@ -750,13 +702,21 @@ function scanVault(vehicle, block) {
     }
 }
 
-function returnLoanedTokens(vehicle, block) {
+/*** TEST THIS */
+async function returnLoanedTokens(vehicle, block) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
     if (Array.isArray(vehicle.tokens)) {
         const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength <= block));
-        unlockedTokens.forEach(token => processWithdrawalOld(vehicle, token));
+        for (let token of unlockedTokens) {
+            const wdResult = await SmartWeave.contracts.write(token.tokenId, {
+                function: "transfer",
+                target: token.source,
+                qty: token.balance
+            });
+        }
     }
 }
+/*** */
 
 function getStateProperty(key: string) {
     if (key.substring(0, 9) === 'settings.') {
@@ -796,59 +756,6 @@ function validateProperties(key: string, value: any) {
 
     return response;
 }
-
-function processWithdrawalOld(vehicle, tokenObj) {
-    // Utilize the Foreign Call Protocol to return tokens to orginal source
-    /**** FOREIGN CALL PROTOCOL to call transfer function on token's smart contract */
-
-
-    // Update state by finding txID if Withdrawal was successful
-    if (Array.isArray(vehicle.tokens)) {
-        vehicle.tokens = vehicle.tokens.filter(token => token.txID !== tokenObj.txID);
-    }
-}
-
-/*** USED FOR FCP - NO LONGER NEEDED */
-// function invoke(state, input) {
-//     /****
-//      * There is no invoke condition in an AFTR Vehicle b/c votes have to be passed in order to transfer tokens out of a vehicle.
-//      * So, this function must be called from within the AFTR Vehicle.
-//      */
-
-//     // Ensure that the interaction has an invocation object
-//     if (!input.invocation) {
-//         throw new ContractError("Missing function invocation.");
-//     }
-
-//     if (!input.invocation.function) {
-//         throw new ContractError("Invalid invocation.");
-//     }
-    
-//     // Ensure that the interaction has a foreign contract ID
-//     if (!input.foreignContract) {
-//         throw new ContractError("Missing Foreign Contract ID.");
-//     }
-
-//     if (typeof input.foreignContract !== 'string') {
-//         throw new ContractError("Invalid Foreign Contract ID.");
-//     }
-    
-//     if (typeof input.foreignContract !== 'string') {
-//         throw new ContractError("Invalid input.");
-//     }
-
-//     // Prevent contract from calling itself
-//     if (input.foreignContract === SmartWeave.contract.id) {
-//         throw new ContractError("A Foreign Call cannot call itself.");
-//     }
-
-//     // Push call to foreignCalls
-//     state.foreignCalls.push({
-//         txID: SmartWeave.transaction.id,
-//         contract: input.foreignContract,
-//         input: input.invocation
-//     });
-// }
 
 async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
     // Loop thru all concluded votes
@@ -923,35 +830,8 @@ async function modifyVehicle(vehicle, vote) {
         } else {
             vehicle[vote.key] = vote.value;
         }
-    // } else if (vote.type === 'withdrawal') {
-    //     // Find the token object that is to be w/d
-    //     const tokenObj = vehicle.tokens.find( (token) => (token.txID === vote.txID) );
-    //     let input = {
-    //         function: "withdrawal",
-    //         foreignContract: tokenObj.tokenId,
-    //         invocation: {
-    //             function: "transfer",
-    //             target: vote.target,
-    //             qty: vote.qty
-    //         }
-    //     };
-    //     if (vehicle.ownership === "single") {
-    //         // Vehicle can change now, proceed with FCP by calling invoke immediately
-    //         invoke(vehicle, input);
-
-    //         // Update deposits
-    //         /*** Is there a way to validate this amount at a later time if the transfer fails? */
-    //         tokenObj.balance -= vote.qty;
-    //     } else {
-    //         // Votes will be required to process the withdrawal, so add to the withdrawals array of the token object until the vote is passed
-    //         input["voteId"] = vote.id;
-    //         input["processed"] = false;
-    //         input["txID"] = vote.txID;
-    //         if (!tokenObj.withdrawals) {
-    //             tokenObj["withdrawals"] = [];
-    //         }
-    //         tokenObj.withdrawals.push(input);
-    //     }
+    } else if (vote.type === 'evolve') {
+        vehicle.evolve = vote.value;
     } else if (vote.type === 'withdrawal') {
         // Find the token object that is to be w/d
         const tokenObj = vehicle.tokens.find( (token) => (token.txID === vote.txID) );

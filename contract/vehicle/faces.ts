@@ -30,6 +30,7 @@ export interface StateInterface {
     },    
     claimable: ClaimableInterface[],                // Required for supporting Internal Writes
     claims: string[],                               // Required for supporting Internal Writes
+    evolve?: string,
     settings: Map<string, any>
 }
 
@@ -46,7 +47,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
     type?: string,
     recipient?: string,
     target?: string,
@@ -83,7 +84,7 @@ export interface TokenInterface {
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction';
+    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;

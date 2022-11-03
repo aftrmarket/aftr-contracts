@@ -199,10 +199,9 @@
         ]
     },
     "votes": [],
-    "invocations": [],
-    "foreignCalls": [],
     "claimable": [],
     "claims": [],
+    "evolve": "",
     "settings" : [
         [ "quorum", 0.5 ],
         [ "voteLength", 2000 ],

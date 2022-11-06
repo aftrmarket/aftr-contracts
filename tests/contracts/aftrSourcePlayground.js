@@ -124,8 +124,7 @@ async function handle(state, action) {
       }
       const evolveSrcId = isArweaveAddress(input.value);
       note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
-    }
-    if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
+    } else if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
         throw new ContractError("Error in input.  Recipient not supplied.");
       }

@@ -700,7 +700,6 @@ function scanVault(vehicle, block) {
     }
 }
 
-/*** TEST THIS */
 async function returnLoanedTokens(vehicle, block) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
     if (Array.isArray(vehicle.tokens)) {
@@ -714,7 +713,6 @@ async function returnLoanedTokens(vehicle, block) {
         }
     }
 }
-/*** */
 
 function getStateProperty(key: string) {
     if (key.substring(0, 9) === 'settings.') {

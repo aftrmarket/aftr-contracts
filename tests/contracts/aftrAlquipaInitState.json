@@ -6,8 +6,6 @@
         "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 10000,
         "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE": 25000
     },
-    "invocations": [],
-    "foreignCalls": [],
     "claimable": [],
     "claims": [],
     "tokens": [
@@ -53,6 +51,7 @@
     "owner": "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw",
     "ownership": "single",
     "votingSystem": "weighted",
+    "evolve": "",
     "settings": [
         [
             "quorum",

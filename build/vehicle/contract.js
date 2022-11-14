@@ -118,7 +118,13 @@ async function handle(state, action) {
     } else if (start < 0 || typeof start !== "number") {
       throw new ContractError("Invalid Start value.");
     }
-    if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
+    if (voteType === "evolve") {
+      if (!input.value) {
+        throw new ContractError("Error in input.  No value exists.");
+      }
+      const evolveSrcId = isArweaveAddress(input.value);
+      note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
+    } else if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
         throw new ContractError("Error in input.  Recipient not supplied.");
       }
@@ -177,7 +183,6 @@ async function handle(state, action) {
       }
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
-    } else if (voteType === "assetDirective") {
     } else if (voteType === "withdrawal") {
       if (!qty || !(qty > 0)) {
         throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
@@ -435,7 +440,7 @@ async function handle(state, action) {
       scanVault(state, block);
     }
     if (state.tokens) {
-      returnLoanedTokens(state, block);
+      await returnLoanedTokens(state, block);
     }
   }
   if (input.function === "balance") {
@@ -476,10 +481,16 @@ function scanVault(vehicle, block) {
     }
   }
 }
-function returnLoanedTokens(vehicle, block) {
+async function returnLoanedTokens(vehicle, block) {
   if (Array.isArray(vehicle.tokens)) {
     const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
-    unlockedTokens.forEach((token) => processWithdrawalOld(vehicle, token));
+    for (let token of unlockedTokens) {
+      const wdResult = await SmartWeave.contracts.write(token.tokenId, {
+        function: "transfer",
+        target: token.source,
+        qty: token.balance
+      });
+    }
   }
 }
 function getStateProperty(key) {
@@ -511,11 +522,6 @@ function validateProperties(key, value) {
     response = "Proposed owner is invalid.";
   }
   return response;
-}
-function processWithdrawalOld(vehicle, tokenObj) {
-  if (Array.isArray(vehicle.tokens)) {
-    vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
-  }
 }
 async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
   for (let vote of concludedVotes) {
@@ -577,6 +583,8 @@ async function modifyVehicle(vehicle, vote) {
     } else {
       vehicle[vote.key] = vote.value;
     }
+  } else if (vote.type === "evolve") {
+    vehicle.evolve = vote.value;
   } else if (vote.type === "withdrawal") {
     const tokenObj = vehicle.tokens.find((token) => token.txID === vote.txID);
     const contractId = tokenObj.tokenId;

@@ -10,8 +10,6 @@
         "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw": 588,
         "h-Bgr13OWUOkRGWrnMT0LuUKfJhRss5pfTdxHmNcXyw": 9970
     },
-    "invocations": [],
-    "foreignCalls": [],
     "claimable": [],
     "claims": [],
     "tokens": [
@@ -52,11 +50,10 @@
     "vault": {},
     "votes": [],
     "status": "started",
-    "tipsAr": 235,
-    "tipsMisc": 2549,
     "owner" : "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
     "ownership" : "single",
     "votingSystem" : "equal",
+    "evolve": "",
     "settings": [
         [
             "quorum",

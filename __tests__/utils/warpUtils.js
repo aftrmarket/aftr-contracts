@@ -125,7 +125,7 @@ function arweaveInit() {
             port: PORT,
             protocol: "http",
             timeout: 20000,
-            logging: true,
+            logging: false,
         });
     } catch (e) {
         console.log(e);

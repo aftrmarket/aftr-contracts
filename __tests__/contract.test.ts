@@ -254,7 +254,7 @@ describe('Test the AFTR Contract', () => {
         });
 
         describe('Propose Tests', () => {
-            it('should propose a vote to the DAO-OWNED vehicle', async () => {
+            it('should propose a vote to change the quorum of the DAO-OWNED vehicle. the quorum should not change until voted on.', async () => {
                 let quorum = 0.51
                 let input = {
                     "function": "propose",
@@ -274,7 +274,23 @@ describe('Test the AFTR Contract', () => {
                 let settings = new Map(state.settings);
                 expect(settings.get('quorum') != quorum).toBeTruthy();
             });
-        })
+        });
+
+
+        it('should vote on the proposed quorum change, to pass the proposal', async () => {
+            let state = (await warpRead(AFTR_DAO_OWNED_CONTRACT_ID)).state;
+            let proposal = state.votes[0];
+            let input = {
+                "function": "vote",
+                "voteId": proposal.id,
+                "cast": "yay"
+            }
+            let result = await warpWrite(master.jwk, AFTR_DAO_OWNED_CONTRACT_ID, input);
+            result = await warpWrite(wallet.jwk, AFTR_DAO_OWNED_CONTRACT_ID, input);
+            console.log(wallet.address);
+            state = (await warpRead(AFTR_DAO_OWNED_CONTRACT_ID)).state;
+            console.log(state);
+        });
 
     })
 

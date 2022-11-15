@@ -179,7 +179,7 @@ async function handle(state, action) {
       }
       const validationResponce = validateProperties(key, value);
       if (validationResponce !== "") {
-        throw new ContractError(validateProperties);
+        throw new ContractError(validationResponce);
       }
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);

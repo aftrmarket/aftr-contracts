@@ -268,7 +268,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
             const validationResponce = validateProperties(key, value);
             if (validationResponce !== "") {
-                throw new ContractError(validateProperties);
+                throw new ContractError(validationResponce);
             }
 
             // Get current value for key in state

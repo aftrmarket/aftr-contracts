@@ -601,7 +601,7 @@ async function modifyVehicle(vehicle, vote) {
       let key = getStateProperty(vote.key);
       updateSetting(vehicle, key, vote.value);
     } else {
-      if (!isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.recipient)) {
+      if (vote.key === "owner" && !isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.value)) {
         throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
       }
       vehicle[vote.key] = vote.value;

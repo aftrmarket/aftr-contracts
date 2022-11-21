@@ -37,7 +37,7 @@
     "if-env": "^1.0.4",
     "smartweave": "^0.4.49",
     "verto-cache-interface": "^1.2.4",
-    "warp-contracts": "^1.2.10"
+    "warp-contracts": "^1.2.20"
   },
   "devDependencies": {
     "dotenv": "^10.0.0",

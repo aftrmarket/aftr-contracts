@@ -47,6 +47,7 @@ async function warpWrite(wallet, contractId, input, internalWrites = true, bundl
         return originalTxId;
     } catch (e) {
         console.log(e);
+        console.log(input)
         return "";
     }
 };

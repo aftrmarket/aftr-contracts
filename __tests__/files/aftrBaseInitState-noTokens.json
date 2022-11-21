@@ -6,19 +6,7 @@
     },
     "claimable": [],
     "claims": [],
-    "tokens": [
-        {
-            "tokenId": "sew_MAXZIgmyEPzzOTkdAca7SQCL9XTCMfxY3KOE5-M",
-            "ticker": "DLT",
-            "source": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
-            "txId": "tx3fasdfoijeo8547",
-            "balance": 55000,
-            "start": 1,
-            "lockLength": 100,
-            "logo": "lhIkxHTm6H4zMyWJVugLUt3EJsQ7zeFyKMLCMToDt3s",
-            "name": "Decent Land"
-        }
-    ],
+    "tokens": [],
     "vault": {},
     "votes": [],
     "status": "started",

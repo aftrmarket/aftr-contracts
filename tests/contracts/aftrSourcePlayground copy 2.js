@@ -441,50 +441,50 @@ async function handle(state, action) {
     state.claims.push(txID);
   }
 
-/*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
-    /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
-    if (input.function === 'plygnd-mint') {
-        if (!input.qty) {
-            ThrowError("Missing qty.");
-        }
-        if (!(caller in state.balances)) {
-            balances[caller] = input.qty;
-        }
+  /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
+  /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
+  if (input.function === 'plygnd-mint') {
+    if (!input.qty) {
+      ThrowError("Missing qty.");
     }
-    /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
-    if (input.function === "plygnd-addLogo") {
-        if (!input.logo) {
-            ThrowError("Missing logo");
-        }
-
-        // Add logo
-        updateSetting(state, "communityLogo", input.logo);
+    if (!(caller in state.balances)) {
+      balances[caller] = input.qty;
+    }
+  }
+  /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
+  if (input.function === "plygnd-addLogo") {
+    if (!input.logo) {
+      ThrowError("Missing logo");
     }
 
-    /*** ADDED UPDATETOKENS FUNCTION TO UPDATE THE TOKEN OBJECT'S LOGOS ON INIT - NOT FOR PRODUCTION */
-    if (input.function === 'plygnd-updateTokens') {
-        if (!input.logoVint) {
-            ThrowError("Missing Vint logo");
-        }
+    // Add logo
+    updateSetting(state, "communityLogo", input.logo);
+  }
 
-        if (!input.logoArhd) {
-            ThrowError("Missing arHD logo");
-        }
-
-        // Update logo in tokens[] if aftr vehicle
-        if (state.tokens) {
-            // Find tokens that == ticker and update their logos
-            const updatedTokens = state.tokens.filter( (token) => (token.ticker === "VINT" || token.ticker === "ARHD"));
-            updatedTokens.forEach((token) => {
-                if (token.ticker === "VINT") {
-                    token.logo = input.logoVint;
-                } else if (token.ticker === "ARHD") {
-                    token.logo = input.logoArhd;
-                }
-            });
-        }
+  /*** ADDED UPDATETOKENS FUNCTION TO UPDATE THE TOKEN OBJECT'S LOGOS ON INIT - NOT FOR PRODUCTION */
+  if (input.function === 'plygnd-updateTokens') {
+    if (!input.logoVint) {
+      ThrowError("Missing Vint logo");
     }
-/*** PLAYGROUND FUNCTIONS END */
+
+    if (!input.logoArhd) {
+      ThrowError("Missing arHD logo");
+    }
+
+    // Update logo in tokens[] if aftr vehicle
+    if (state.tokens) {
+      // Find tokens that == ticker and update their logos
+      const updatedTokens = state.tokens.filter((token) => (token.ticker === "VINT" || token.ticker === "ARHD"));
+      updatedTokens.forEach((token) => {
+        if (token.ticker === "VINT") {
+          token.logo = input.logoVint;
+        } else if (token.ticker === "ARHD") {
+          token.logo = input.logoArhd;
+        }
+      });
+    }
+  }
+  /*** PLAYGROUND FUNCTIONS END */
 
 
   if (input.function === "multiInteraction") {

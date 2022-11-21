@@ -148,6 +148,9 @@ async function handle(state, action) {
         if (qty > balances[recipient]) {
           throw new ContractError("Invalid quantity.  Can't burn more than recipient has.");
         }
+        if (state.ownership === "single" && balances[recipient] - qty < 1 && recipient === state.owner) {
+          throw new ContractError("Invalid quantity.  Can't burn all the owner's balance.  The owner must have at least a balance of 1 or the vehicle will be rendered useless.");
+        }
       }
       if (voteType === "removeMember") {
         if (recipient === state.owner) {
@@ -158,6 +161,9 @@ async function handle(state, action) {
         if (recipient === SmartWeave.contract.id) {
           throw new ContractError("Can't add the vehicle as a member.");
         }
+      }
+      if (!isProposedOwnershipValid(state, voteType, qty, recipient)) {
+        throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
       }
       if (voteType === "mint") {
         note = "Mint " + String(qty) + " tokens for " + recipient;
@@ -179,7 +185,12 @@ async function handle(state, action) {
       }
       const validationResponce = validateProperties(key, value);
       if (validationResponce !== "") {
-        throw new ContractError(validateProperties);
+        throw new ContractError(validationResponce);
+      }
+      if (key === "owner") {
+        if (!isProposedOwnershipValid(state, voteType, qty, value)) {
+          throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
+        }
       }
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
@@ -411,50 +422,50 @@ async function handle(state, action) {
     state.claims.push(txID);
   }
 
-/*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
-    /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
-    if (input.function === 'plygnd-mint') {
-        if (!input.qty) {
-            ThrowError("Missing qty.");
-        }
-        if (!(caller in state.balances)) {
-            balances[caller] = input.qty;
-        }
+  /*** PLAYGROUND FUNCTIONS - NOT FOR PRODUCTION */
+  /*** ADDED MINT FUNCTION FOR THE TEST GATEWAY - NOT FOR PRODUCTION */
+  if (input.function === 'plygnd-mint') {
+    if (!input.qty) {
+      ThrowError("Missing qty.");
     }
-    /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
-    if (input.function === "plygnd-addLogo") {
-        if (!input.logo) {
-            ThrowError("Missing logo");
-        }
-
-        // Add logo
-        updateSetting(state, "communityLogo", input.logo);
+    if (!(caller in state.balances)) {
+      balances[caller] = input.qty;
+    }
+  }
+  /*** ADDED ADDLOGO FUNCTION TO EASILY ADD LOGO ON TEST GATEWAY - NOT FOR PRODUCTION */
+  if (input.function === "plygnd-addLogo") {
+    if (!input.logo) {
+      ThrowError("Missing logo");
     }
 
-    /*** ADDED UPDATETOKENS FUNCTION TO UPDATE THE TOKEN OBJECT'S LOGOS ON INIT - NOT FOR PRODUCTION */
-    if (input.function === 'plygnd-updateTokens') {
-        if (!input.logoVint) {
-            ThrowError("Missing Vint logo");
-        }
+    // Add logo
+    updateSetting(state, "communityLogo", input.logo);
+  }
 
-        if (!input.logoArhd) {
-            ThrowError("Missing arHD logo");
-        }
-
-        // Update logo in tokens[] if aftr vehicle
-        if (state.tokens) {
-            // Find tokens that == ticker and update their logos
-            const updatedTokens = state.tokens.filter( (token) => (token.ticker === "VINT" || token.ticker === "ARHD"));
-            updatedTokens.forEach((token) => {
-                if (token.ticker === "VINT") {
-                    token.logo = input.logoVint;
-                } else if (token.ticker === "ARHD") {
-                    token.logo = input.logoArhd;
-                }
-            });
-        }
+  /*** ADDED UPDATETOKENS FUNCTION TO UPDATE THE TOKEN OBJECT'S LOGOS ON INIT - NOT FOR PRODUCTION */
+  if (input.function === 'plygnd-updateTokens') {
+    if (!input.logoVint) {
+      ThrowError("Missing Vint logo");
     }
-/*** PLAYGROUND FUNCTIONS END */
+
+    if (!input.logoArhd) {
+      ThrowError("Missing arHD logo");
+    }
+
+    // Update logo in tokens[] if aftr vehicle
+    if (state.tokens) {
+      // Find tokens that == ticker and update their logos
+      const updatedTokens = state.tokens.filter((token) => (token.ticker === "VINT" || token.ticker === "ARHD"));
+      updatedTokens.forEach((token) => {
+        if (token.ticker === "VINT") {
+          token.logo = input.logoVint;
+        } else if (token.ticker === "ARHD") {
+          token.logo = input.logoArhd;
+        }
+      });
+    }
+  }
+  /*** PLAYGROUND FUNCTIONS END */
 
 
 
@@ -624,14 +635,23 @@ async function modifyVehicle(vehicle, vote) {
       vehicle.vault[vote.recipient] = [vaultObj];
     }
   } else if (vote.type === "burn") {
+    if (vote.key === "owner" && !isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.value)) {
+      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
+    }
     vehicle.balances[vote.recipient] -= vote.qty;
   } else if (vote.type === "removeMember") {
+    if (!isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.recipient)) {
+      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
+    }
     delete vehicle.balances[vote.recipient];
   } else if (vote.type === "set") {
     if (vote.key.substring(0, 9) === "settings.") {
       let key = getStateProperty(vote.key);
       updateSetting(vehicle, key, vote.value);
     } else {
+      if (!isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.recipient)) {
+        throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
+      }
       vehicle[vote.key] = vote.value;
     }
   } else if (vote.type === "evolve") {
@@ -670,4 +690,47 @@ async function getTokenInfo(assetState) {
     ticker: assetState.ticker,
     logo: settings.get("communityLogo")
   };
+}
+function isProposedOwnershipValid(vehicle, proposalType, qty, member) {
+  let valid = true;
+  if (proposalType === "burn" && !Number.isInteger(qty)) {
+    valid = false;
+  }
+  if (proposalType === "removeMember") {
+    if (vehicle.ownership === "single" && vehicle.owner === member) {
+      valid = false;
+    } else if (vehicle.ownership === "dao") {
+      let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
+      delete newBalances[member];
+      for (let addr in newBalances) {
+        if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
+          valid = true;
+          break;
+        } else {
+          valid = false;
+        }
+      }
+    }
+  } else if (proposalType === "burn") {
+    if (vehicle.ownership === "single" && vehicle.owner === member && vehicle.balances[member] - qty < 1) {
+      valid = false;
+    }
+    if (vehicle.ownership === "dao") {
+      let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
+      newBalances[member] -= qty;
+      for (let addr in newBalances) {
+        if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
+          valid = true;
+          break;
+        } else {
+          valid = false;
+        }
+      }
+    }
+  } else if (proposalType === "set") {
+    if (vehicle.ownership === "single" && (vehicle.balances[member] < 1 || !vehicle.balances[member])) {
+      valid = false;
+    }
+  }
+  return valid;
 }

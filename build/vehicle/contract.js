@@ -651,7 +651,7 @@ function isProposedOwnershipValid(vehicle, proposalType, qty, member) {
   if (proposalType === "removeMember") {
     if (vehicle.ownership === "single" && vehicle.owner === member) {
       valid = false;
-    } else if (vehicle.ownership === "dao") {
+    } else if (vehicle.ownership === "multi") {
       let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
       delete newBalances[member];
       for (let addr in newBalances) {
@@ -667,7 +667,7 @@ function isProposedOwnershipValid(vehicle, proposalType, qty, member) {
     if (vehicle.ownership === "single" && vehicle.owner === member && vehicle.balances[member] - qty < 1) {
       valid = false;
     }
-    if (vehicle.ownership === "dao") {
+    if (vehicle.ownership === "multi") {
       let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
       newBalances[member] -= qty;
       for (let addr in newBalances) {

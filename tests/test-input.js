@@ -677,7 +677,7 @@ let state = {
         }
       ]
     },
-    "ownership": "dao",
+    "ownership": "multi",
     "owner": "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
     "votes": [
       {

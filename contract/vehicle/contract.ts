@@ -907,7 +907,7 @@ function isProposedOwnershipValid(vehicle: StateInterface, proposalType: string,
     if (proposalType === "removeMember") {
         if (vehicle.ownership === "single" && vehicle.owner === member) {
             valid = false;
-        } else if (vehicle.ownership === "dao") {
+        } else if (vehicle.ownership === "multi") {
             // Loop through proposed balances and determine is anyone will have a balance left
             let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
             delete newBalances[member];
@@ -925,7 +925,7 @@ function isProposedOwnershipValid(vehicle: StateInterface, proposalType: string,
         if (vehicle.ownership === "single" && vehicle.owner === member && vehicle.balances[member] - qty < 1) {
             valid = false;
         } 
-        if (vehicle.ownership === "dao") {
+        if (vehicle.ownership === "multi") {
             // Loop through proposed balances and determine is anyone will have a balance left
             let newBalances = JSON.parse(JSON.stringify(vehicle.balances));
             newBalances[member] -= qty;

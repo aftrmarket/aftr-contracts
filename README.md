@@ -10,7 +10,7 @@ The AFTR state follows common practices established by early SmartWeave contract
         [addr: string]: number,                     
     },
     owner: string,                                // Wallet of owner of vehicle
-    ownership: 'single' | 'dao',                    // Owned by a single wallet or a DAO
+    ownership: 'single' | 'multi',                   // Owned by a single wallet or multiple owners
     votingSystem: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped, started, or expired (lock period has expired without being renewed) - CURRENTLY NOT USED
     vault: {                                        // Locked member tokens
@@ -107,7 +107,7 @@ VoteInterface {
   }
 ```
 
-All changes to the vehicle state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the vehicle is owned by a single member or a DAO. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is DAO, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the vehicle.
+All changes to the vehicle state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the vehicle is owned by single or multiple members. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is multiple, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the vehicle.
 
 **Vote Types**
 - mint - A vote to mint vehicle tokens (tokens on the balance object).
@@ -216,7 +216,7 @@ const wdAction = {
 ```
 
 ### Propose
-The propose function is how most changes to the vehicle are proposed. For single ownership vehicles, changes are sent to the contract as proposals, but then the proposals are passed during the next contract read event. By implementing changes to single ownership and DAO ownership vehicles the same way, consistency is maintained.
+The propose function is how most changes to the vehicle are proposed. For single ownership vehicles, changes are sent to the contract as proposals, but then the proposals are passed during the next contract read event. By implementing changes to single and multiple owned vehicles the same way, consistency is maintained.
 
 When a proposal is submitted, the contract adds an VoteInterface object to the votes array in the state.  An unique ID is created using the block concatenated with the SmartWeave Transaction ID.
 
@@ -252,7 +252,7 @@ Multi-interactions allows multiple contract actions to be bundled together in on
 - Multiple changes to the vehicle can be processed in one call.
 - Tips, token unlocking, and returning loaned tokens are handled only once in the first iteration of the multi-interaction.
 - The contract limits the number of actions inside of a multi-interaction to 1000, which should be more than enough.
-- If a multi-interaction is called from a DAO owned vehicle, then the number of proposed votes will be equal to the number of actions bundled into the call.
+- If a multi-interaction is called from a multi-owned vehicle, then the number of proposed votes will be equal to the number of actions bundled into the call.
 
 ### Sample Multi-Interaction Action
 ```typescript

@@ -5,7 +5,7 @@ export interface StateInterface {
         [addr: string]: number;                 // lessee wallet addr: number of seats leased
     };
     owner: string;                            // Wallet of owner of vehicle
-    ownership: 'single' | 'dao';
+    ownership: 'single' | 'multi';
     votingSystem: 'equal' | 'weighted';        // Member votes count equally or weighted based on token balance
     status: 'stopped' | 'started' | 'expired';  // Current not used.  Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
     ///dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM) - POTENTIAL FUTURE ADD

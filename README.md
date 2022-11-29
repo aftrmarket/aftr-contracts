@@ -21,7 +21,7 @@ The AFTR state follows common practices established by early SmartWeave contract
         }]
     },
     votes: VoteInterface[],
-    tokens?: [                                      // Tokens stored in vehicle
+    tokens?: [                                      // Assets stored in vehicle
         TokenInterface,
     ],
     claimable: ClaimableInterface[],                // Required for Internal Writes
@@ -53,7 +53,7 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
 ### Input Interface
 ```typescript
 InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim';
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'multiInteraction' | 'allow' | 'claim';
     type?: string;
     recipient?: string;
     target?: string;
@@ -85,7 +85,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
+    type?: 'addBalance' | 'subtractBalance' | 'set' | 'addMember' | 'addLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -110,12 +110,12 @@ VoteInterface {
 All changes to the vehicle state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the vehicle is owned by single or multiple members. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is multiple, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the vehicle.
 
 **Vote Types**
-- mint - A vote to mint vehicle tokens (tokens on the balance object).
-- burn - A vote to burn vehicle tokens.
+- addBalance - A vote to add voting power to a member's balance.
+- subtractBalance - A vote to subtract voting power from a member's balance.
 - set - A vote to set or add a state property or setting.
-- addMember - A vote to add a member to the vehicle and minting tokens for that new member (add a wallet to the balance).
-- mintLocked - A vote to mint locked tokens for a member of the vehicle (i.e. adding a member balance to the vault).
-- removeMember - A vote to remove a member of the vehicle, thus burning all their tokens as well.
+- addMember - A vote to add a member to the vehicle with a balance of the specifide quantity.
+- addLocked - A vote to add a locked balance for a member of the vehicle (i.e. adding a member balance to the vault).
+- removeMember - A vote to remove a member of the vehicle, thus removing all their voting power.
 - withdrawal - A vote to withdrawal assets from the vehicle and transfer them to another wallet. This removes the balance from the vehicle's token object and transfers the balance from the vehicle to the wallet inside the asset's contract.
 - externalInteraction - A vote to send an interaction to another contract.
 - evolve - A vote to evolve the contract to a new source. Expects a new contract source ID in the value property.
@@ -158,20 +158,6 @@ const balAction = {
     input: { 
         function: 'balance',
         target: 'abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8'
-    }
-};
-```
-
-### Transfer
-The transfer function works just like in other SmartWeave contracts; it transfers the balance from the caller to the target.
-
-#### Sample Transfer Action
-```typescript
-const txAction = {
-    input: {
-        function: 'transfer',
-        target: 'Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I',
-        qty: 300
     }
 };
 ```

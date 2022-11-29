@@ -47,7 +47,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
     type?: string,
     recipient?: string,
     target?: string,
@@ -57,13 +57,13 @@ export interface InputInterface {
     note?: string,
     actions?: InputInterface[]
 }
-
+/*
 export interface TransferInterface {
     function: 'transfer',
     target: string,
     qty: number,
 }
-
+*/
 export interface DepositInterface {
     function: 'deposit',
     txID: string,
@@ -84,7 +84,7 @@ export interface TokenInterface {
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
+    type?: 'addBalance' | 'subractBalance' | 'indicative' | 'set' | 'addMember' | 'incLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -101,7 +101,7 @@ export interface VoteInterface {
     voted?: string[];
     start?: number;
     voteLength?: number;        // Length of vote must be stored inside vote in case the settings.voteLength changes
-    lockLength?: number;        // Length of blocks when minting locked tokens
+    lockLength?: number;        // Length of blocks when incing locked tokens
     txID?: string;              // Used during withdrawal for validation
   }
 

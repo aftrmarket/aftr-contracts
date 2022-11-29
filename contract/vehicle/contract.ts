@@ -105,7 +105,6 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Default is weighted meaning votes are weighted by balance
         // If the votingSystem is equal (or distributed evenly):  all votes counted equally
         // Make sure to count the members in the balances object and the vault objects
-        // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
         
         let totalWeight = 0;
         let votingPower = JSON.parse(JSON.stringify(balances));
@@ -201,7 +200,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             }
             const evolveSrcId = isArweaveAddress(input.value);
             note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
-        } else if (voteType === 'mint' || voteType === 'burn' || voteType === 'mintLocked' || voteType === 'addMember' || voteType === 'removeMember') {
+        } else if (voteType === 'addBalance' || voteType === 'subtractBalance' || voteType === 'addLocked' || voteType === 'addMember' || voteType === 'removeMember') {
             if (!input.recipient) {
                 throw new ContractError("Error in input.  Recipient not supplied.");
             }
@@ -212,7 +211,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             }
 
             // Check to see if qty is too big
-            if (voteType === 'mint' || voteType === 'addMember' || voteType === 'mintLocked') {
+            if (voteType === 'addBalance' || voteType === 'addMember' || voteType === 'addLocked') {
                 let totalTokens = 0;
                 for (let wallet in balances) {
                     totalTokens += balances[wallet];
@@ -222,16 +221,16 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 }
             }
 
-            // Check to see if trying to burn more than possible
-            if (voteType === 'burn') {
+            // Check to see if trying to decrease more than possible
+            if (voteType === 'subtractBalance') {
                 if (!balances[recipient]) {
-                    throw new ContractError("Request to burn for recipient not in balances.");
+                    throw new ContractError("Request to decrease for recipient not in balances.");
                 }
                 if (qty > balances[recipient]) {
-                    throw new ContractError("Invalid quantity.  Can't burn more than recipient has.");
+                    throw new ContractError("Invalid quantity.  Can't decrease more than recipient has.");
                 }
                 if (state.ownership === 'single' && balances[recipient] - qty < 1 && recipient === state.owner) {
-                    throw new ContractError("Invalid quantity.  Can't burn all the owner's balance.  The owner must have at least a balance of 1 or the vehicle will be rendered useless.");
+                    throw new ContractError("Invalid quantity.  Can't decrease all the owner's balance.  The owner must have at least a balance of 1 or the vehicle will be rendered useless.");
                 }
             }
 
@@ -253,16 +252,16 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
             }
 
-            if (voteType === 'mint') {
-                note = "Mint " + String(qty) + " tokens for " + recipient;
-            } else if (voteType === 'mintLocked') {
-                note = "Mint and Lock " + String(qty) + " tokens for " + recipient;
-            } else if (voteType === 'burn') {
-                note = "Burn " + String(qty) + " tokens for " + recipient;
+            if (voteType === 'addBalance') {
+                note = "Add balance of " + String(qty) + " to " + recipient;
+            } else if (voteType === 'addLocked') {
+                note = "Add and Lock a balance of " + String(qty) + " for " + recipient;
+            } else if (voteType === 'subtractBalance') {
+                note = "Subtract balance of " + String(qty) + " for " + recipient;
             } else if (voteType === 'addMember') {
-                note = "Add new member, " + recipient + ", and mint " + String(qty) + " tokens";
+                note = "Add new member, " + recipient + ", with a balance of " + String(qty);
             } else if (voteType === 'removeMember') {
-                note = "Remove member, " + recipient + ", and burn their " + String(qty) + " tokens";
+                note = "Remove member, " + recipient + ", with a balance of " + String(qty);
             }
         } else if (voteType === 'set') {
             // Validate properties
@@ -409,6 +408,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
     /******* END VOTING FUNCTIONS */
 
+    /* 
     if (input.function === "transfer") {
         const target = input.target;
         const qty = input.qty;
@@ -446,6 +446,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             balances[targetAddress] = qty;
         }
     }
+    */
 
     if (input.function === 'deposit') {
         // Transfer tokens into vehicle
@@ -806,15 +807,15 @@ async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
 }
 
 async function modifyVehicle(vehicle, vote) {
-    if (vote.type === 'mint' || vote.type === 'addMember') {
+    if (vote.type === 'addBalance' || vote.type === 'addMember') {
         if (vote.recipient in vehicle.balances) {
-            // Wallet already exists in state, add tokens
+            // Wallet already exists in state, add balance
             vehicle.balances[vote.recipient] += vote.qty;
         } else {
             // Wallet is new
             vehicle.balances[vote.recipient] = vote.qty;
         }
-    } else if (vote.type === 'mintLocked') {
+    } else if (vote.type === 'addLocked') {
         let vaultObj = {
             balance: vote.qty,
             start: vote.start,
@@ -827,7 +828,7 @@ async function modifyVehicle(vehicle, vote) {
             // Add new
             vehicle.vault[vote.recipient] = [ vaultObj ];
         }
-    } else if (vote.type === 'burn') {
+    } else if (vote.type === 'subtractBalance') {
         if (!isProposedOwnershipValid(vehicle, vote.type, vote.qty, vote.recipient)) {
             throw new ContractError("The proposed change is not allowed as it would leave the ownership of the vehicle with no balance thus rendering the vehicle useless.");
         }
@@ -900,7 +901,7 @@ async function getTokenInfo(assetState: object) {
 
 function isProposedOwnershipValid(vehicle: StateInterface, proposalType: string, qty: number, member: string) {
     let valid = true;
-    if (proposalType === "burn" && !Number.isInteger(qty)) {
+    if (proposalType === "subtractBalance" && !Number.isInteger(qty)) {
         valid = false;
     }
 
@@ -921,7 +922,7 @@ function isProposedOwnershipValid(vehicle: StateInterface, proposalType: string,
                 }
             }
         }
-    } else if (proposalType === "burn") {
+    } else if (proposalType === "subtractBalance") {
         if (vehicle.ownership === "single" && vehicle.owner === member && vehicle.balances[member] - qty < 1) {
             valid = false;
         } 

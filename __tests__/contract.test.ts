@@ -97,7 +97,7 @@ describe('Test the AFTR Contract', () => {
     });
 
     it('should mint all wallets some test tokens', async () => {
-        const mintAmt = 50
+        const mintAmt = 50500
 
         for (const wallet of wallets) {
             const input = {
@@ -106,8 +106,11 @@ describe('Test the AFTR Contract', () => {
             }
             const result = await warpWrite(wallet.jwk, TOKEN_CONTRACT_ID, input)
         }
-        const state = await warpRead(TOKEN_CONTRACT_ID)
-        console.log(state);
+        const state = (await warpRead(TOKEN_CONTRACT_ID)).state
+        const balances = state.balances
+        for (const wallet of wallets) {
+            expect(balances[wallet.address] !== undefined).toBeTruthy()
+        }
     });
 
     beforeEach(() => {
@@ -306,27 +309,32 @@ describe('Test the AFTR Contract', () => {
 
         describe('Allow Tests', () => {
             it('should setup a claim on the asset being deposited in the vehicle', async () => {
-                let quantity = 6700
+                let quantity = 10100
+                let wallet = wallets[4]
 
                 const inputAllow = {
                     "function": "allow",
                     "target": AFTR_SINGLE_OWNED_CONTRACT_ID,
                     "qty": quantity
                 }
-                const claimTx = await warpWrite(master.jwk, TOKEN_CONTRACT_ID, inputAllow);
-                let state = (await warpRead(AFTR_SINGLE_OWNED_CONTRACT_ID)).state;
-                console.log(claimTx)
+                // const claimTx = await warpWrite(master.jwk, TOKEN_CONTRACT_ID, inputAllow);
+                const claimTx = await warpWrite(wallet.jwk, TOKEN_CONTRACT_ID, inputAllow);
+                let state = (await warpRead(TOKEN_CONTRACT_ID)).state;
+                console.log(state)
 
-                // const inputDep = {
-                //     function: "deposit",
-                //     tokenId: TOKEN_CONTRACT_ID,
-                //     qty: quantity,
-                //     txID: claimTx // TX ID from the first interaction
-                // };
-                // const depositTx = await warpWrite(master.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, inputDep);
-                // console.log(depositTx)
-                // state = (await warpRead(AFTR_SINGLE_OWNED_CONTRACT_ID)).state;
-                // console.log(state)
+                const inputDep = {
+                    function: "deposit",
+                    tokenId: TOKEN_CONTRACT_ID,
+                    qty: quantity,
+                    txID: claimTx // TX ID from the first interaction
+                };
+                const depositTx = await warpWrite(wallet.jwk, AFTR_SINGLE_OWNED_CONTRACT_ID, inputDep);
+                state = (await warpRead(AFTR_SINGLE_OWNED_CONTRACT_ID)).state;
+                const tstate = (await warpRead(TOKEN_CONTRACT_ID)).state;
+                console.log(tstate);
+                const token = state.tokens[0];
+                expect(token.tokenId).toBe(TOKEN_CONTRACT_ID);
+                expect(token.balance).toBe(quantity)
             })
         });
     });
@@ -666,23 +674,15 @@ describe('Test the AFTR Contract', () => {
 /**
  * ## Notes ##
  * * * * * * * * * 
+ * Submitting claim to token contract adds submitter to balances and gives submitter NaN balance if they are not a token holder
+ * 
+ * 
+ * -----
  * add beforeEach block to update the state of the vehicle? (warpRead)
  * 
  * update addMemberToVehicle function to pass the vote through
  * 
  * how to see casted votes?
- * 
- * 
- * 
- * DAO Propose:Add breaks contract?
- * comment out propose:add and tests run
- * or
- * comment out last warpRead statement: 
- *      Error: Unable to retrieve tx usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A. 404. undefined     <<< VINT token
- * 
- * 
- * Reading the contract after adding a member "breaks" the contract ?
- * Also occurring after proposing a burn vote
  * 
  * TODO * * * * * *
  * Helper functions needed:

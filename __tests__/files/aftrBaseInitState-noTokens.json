@@ -1,6 +1,6 @@
 {
-    "name": "DAO Owned Vehicle",
-    "ticker": "AFTR-DAO",
+    "name": "Multi Owned Vehicle",
+    "ticker": "AFTR-MULT",
     "balances": {
         "bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU": 25000
     },
@@ -11,7 +11,7 @@
     "votes": [],
     "status": "started",
     "owner": "bAJYgxGXt9KE4g8H7l7u80iFaBIgzpUQNUgycJby0lU",
-    "ownership": "dao",
+    "ownership": "multi",
     "votingSystem": "weighted",
     "settings": [
         [

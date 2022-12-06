@@ -174,7 +174,7 @@ describe('Test the AFTR Contract', () => {
                 });
             });
 
-            describe('Mint:', () => {
+            describe('Add Balance:', () => {
                 let members: string[];
                 let oldBal: number;
                 let recipient: string
@@ -188,7 +188,7 @@ describe('Test the AFTR Contract', () => {
                 it('should mint 400000 tokens to a non-owner', async () => {
                     const input = {
                         "function": "propose",
-                        "type": "mint",
+                        "type": "addBalance",
                         "recipient": recipient,
                         "qty": mintAmt
                     };
@@ -427,7 +427,7 @@ describe('Test the AFTR Contract', () => {
 
                     let input = {
                         "function": "propose",
-                        "type": "mint",
+                        "type": "addBalance",
                         "recipient": recipient,
                         "qty": mintAmt
                     };
@@ -581,7 +581,7 @@ describe('Test the AFTR Contract', () => {
                 });
             });
 
-            describe('Burn:', () => {
+            describe('Subtract Balance:', () => {
                 let members: string[];
                 let oldBal: number;
                 let recipient: string
@@ -595,7 +595,7 @@ describe('Test the AFTR Contract', () => {
                 it('should submit a proposal to burn 3000 tokens from the new member', async () => {
                     let input = {
                         "function": "propose",
-                        "type": "burn",
+                        "type": "subtractBalance",
                         "recipient": recipient,
                         "qty": burnAmt
                     };
@@ -616,7 +616,7 @@ describe('Test the AFTR Contract', () => {
                     let votes = state.votes;
 
                     let vote = votes[votes.length - 1]
-                    console.log("Burn Vote:\n" + JSON.stringify(vote, null, '\t'))
+                    console.log("Subtract balance Vote:\n" + JSON.stringify(vote, null, '\t'))
                     let input = {
                         "function": "vote",
                         "voteId": vote.id,

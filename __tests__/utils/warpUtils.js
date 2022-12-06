@@ -81,7 +81,7 @@ async function warpCreateContract(wallet, source, initState, currentTags = undef
     const warp = warpInit();
     try {
         //@ts-expect-error
-        let txIds = await warp.createContract.deploy({
+        let txIds = await warp.deploy({
             wallet: wallet,
             initState: initState,
             src: source,
@@ -105,7 +105,7 @@ async function warpCreateFromTx(wallet, initState, srcId, currentTags = undefine
     const warp = warpInit();
     try {
         //@ts-expect-error
-        let txIds = await warp.createContract.deployFromSourceTx({
+        let txIds = await warp.deployFromSourceTx({
             wallet: wallet,
             initState: initState,
             srcTxId: srcId,

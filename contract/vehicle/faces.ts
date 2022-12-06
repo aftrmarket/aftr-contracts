@@ -4,10 +4,10 @@ export interface StateInterface {
     balances: {
         [addr: string]: number;                 // lessee wallet addr: number of seats leased
     };
-    owner: string;                            // Wallet of owner of vehicle
+    owner: string;                            // Wallet of owner of repo
     ownership: 'single' | 'multi';
     votingSystem: 'equal' | 'weighted';        // Member votes count equally or weighted based on token balance
-    status: 'stopped' | 'started' | 'expired';  // Current not used.  Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
+    status: 'stopped' | 'started' | 'expired';  // Current not used.  Repo status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
     ///dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM) - POTENTIAL FUTURE ADD
     vault: {
         [key: string]: [{
@@ -47,7 +47,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
     type?: string,
     recipient?: string,
     target?: string,
@@ -78,7 +78,7 @@ export interface TokenInterface {
     source: string,
     balance: number,
     start: number,          // Stamp when added
-    lockLength?: number,    // Planning for temporary loaning of tokens to a vehicle
+    lockLength?: number,    // Planning for temporary loaning of tokens to a repo
 }
 
 export interface VoteInterface {

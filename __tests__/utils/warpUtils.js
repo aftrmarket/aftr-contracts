@@ -118,6 +118,18 @@ async function warpCreateFromTx(wallet, initState, srcId, currentTags = undefine
     }
 };
 
+async function warpSaveNewSource(wallet, newSource, env = "") {
+    const warp = warpInit(env);
+    try {
+        const newSrcTx = await warp.createSourceTx({ src: newSource }, wallet);
+        const newSrcTxId = await warp.saveSourceTx(newSrcTx);
+        return newSrcTxId;
+    } catch (e) {
+        console.log("ERROR saving new contract source: " + e);
+        return "";
+    }
+}
+
 function arweaveInit() {
     let arweave = {};
     try {

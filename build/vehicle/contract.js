@@ -1,3 +1,24 @@
+var __async = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+
 // contract/vehicle/contract.ts
 var multiLimit = 1e3;
 var multiIteration = 0;
@@ -445,27 +466,27 @@ async function handle(state, action) {
     if (concludedVotes.length > 0) {
       await finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"), block);
     }
-  }
-  if (multiIteration <= 1) {
-    if (state.vault && typeof state.vault === "object") {
-      scanVault(state, block);
-    }
-    if (state.tokens) {
-      await returnLoanedTokens(state, block);
-    }
-  }
-  if (input.function === "balance") {
-    let vaultBal = 0;
-    try {
-      for (let bal of state.vault[caller]) {
-        vaultBal += bal.balance;
+    if (multiIteration <= 1) {
+      if (state.vault && typeof state.vault === "object") {
+        scanVault(state, block);
       }
-    } catch (e) {
+      if (state.tokens) {
+        yield returnLoanedTokens(state, block);
+      }
     }
-    return { result: { target, balance, vaultBal } };
-  } else {
-    return { state };
-  }
+    if (input.function === "balance") {
+      let vaultBal = 0;
+      try {
+        for (let bal of state.vault[caller]) {
+          vaultBal += bal.balance;
+        }
+      } catch (e) {
+      }
+      return { result: { target, balance, vaultBal } };
+    } else {
+      return { state };
+    }
+  };
 }
 function isArweaveAddress(addy) {
   const address = addy.toString().trim();
@@ -492,17 +513,19 @@ function scanVault(repo, block) {
     }
   }
 }
-async function returnLoanedTokens(repo, block) {
-  if (Array.isArray(repo.tokens)) {
-    const unlockedTokens = repo.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
-    for (let token of unlockedTokens) {
-      const wdResult = await SmartWeave.contracts.write(token.tokenId, {
-        function: "transfer",
-        target: token.source,
-        qty: token.balance
-      });
+function returnLoanedTokens(repo, block) {
+  return __async(this, null, function* () {
+    if (Array.isArray(repo.tokens)) {
+      const unlockedTokens = repo.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
+      for (let token of unlockedTokens) {
+        const wdResult = yield SmartWeave.contracts.write(token.tokenId, {
+          function: "transfer",
+          target: token.source,
+          qty: token.balance
+        });
+      }
     }
-  }
+  });
 }
 function getStateProperty(key) {
   if (key.substring(0, 9) === "settings.") {
@@ -534,90 +557,94 @@ function validateProperties(key, value) {
   }
   return response;
 }
-async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
-  for (let vote of concludedVotes) {
-    let finalQuorum = 0;
-    let finalSupport = 0;
-    if (repo.ownership === "single" || vote.yays / vote.totalWeight > support) {
-      vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
-      vote.status = "passed";
-      await modifyRepo(repo, vote);
-    } else if (vote.nays / vote.totalWeight > support) {
-      vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
-      vote.status = "failed";
-    } else if (block > vote.start + vote.voteLength) {
-      finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-      if (vote.totalWeight * quorum > vote.yays + vote.nays) {
-        vote.status = "quorumFailed";
-        vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
-      } else if (vote.yays / (vote.yays + vote.nays) > support) {
-        finalSupport = vote.yays / (vote.yays + vote.nays);
+function finalizeVotes(repo, concludedVotes, quorum, support, block) {
+  return __async(this, null, function* () {
+    for (let vote of concludedVotes) {
+      let finalQuorum = 0;
+      let finalSupport = 0;
+      if (repo.ownership === "single" || vote.yays / vote.totalWeight > support) {
+        vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
         vote.status = "passed";
-        vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
-        await modifyRepo(repo, vote);
+        yield modifyRepo(repo, vote);
+      } else if (vote.nays / vote.totalWeight > support) {
+        vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
+        vote.status = "failed";
+      } else if (block > vote.start + vote.voteLength) {
+        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+        if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+          vote.status = "quorumFailed";
+          vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
+        } else if (vote.yays / (vote.yays + vote.nays) > support) {
+          finalSupport = vote.yays / (vote.yays + vote.nays);
+          vote.status = "passed";
+          vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
+          yield modifyRepo(repo, vote);
+        }
+      } else {
+        vote.status = "failed";
+        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+        finalSupport = vote.yays / (vote.yays + vote.nays);
+        vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
       }
-    } else {
-      vote.status = "failed";
-      finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-      finalSupport = vote.yays / (vote.yays + vote.nays);
-      vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
     }
-  }
-  ;
+    ;
+  });
 }
-async function modifyRepo(repo, vote) {
-  if (vote.type === "addBalance" || vote.type === "addMember") {
-    if (vote.recipient in repo.balances) {
-      repo.balances[vote.recipient] += vote.qty;
-    } else {
-      repo.balances[vote.recipient] = vote.qty;
-    }
-  } else if (vote.type === "addLocked") {
-    let vaultObj = {
-      balance: vote.qty,
-      start: vote.start,
-      end: vote.start + vote.lockLength
-    };
-    if (vote.recipient in repo.vault) {
-      repo.vault[vote.recipient].push(vaultObj);
-    } else {
-      repo.vault[vote.recipient] = [vaultObj];
-    }
-  } else if (vote.type === "subtractBalance") {
-    if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
-      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-    }
-    repo.balances[vote.recipient] -= vote.qty;
-  } else if (vote.type === "removeMember") {
-    if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
-      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-    }
-    delete repo.balances[vote.recipient];
-  } else if (vote.type === "set") {
-    if (vote.key.substring(0, 9) === "settings.") {
-      let key = getStateProperty(vote.key);
-      updateSetting(repo, key, vote.value);
-    } else {
-      if (vote.key === "owner" && !isProposedOwnershipValid(repo, vote.type, vote.qty, vote.value)) {
+function modifyRepo(repo, vote) {
+  return __async(this, null, function* () {
+    if (vote.type === "addBalance" || vote.type === "addMember") {
+      if (vote.recipient in repo.balances) {
+        repo.balances[vote.recipient] += vote.qty;
+      } else {
+        repo.balances[vote.recipient] = vote.qty;
+      }
+    } else if (vote.type === "addLocked") {
+      let vaultObj = {
+        balance: vote.qty,
+        start: vote.start,
+        end: vote.start + vote.lockLength
+      };
+      if (vote.recipient in repo.vault) {
+        repo.vault[vote.recipient].push(vaultObj);
+      } else {
+        repo.vault[vote.recipient] = [vaultObj];
+      }
+    } else if (vote.type === "subtractBalance") {
+      if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
         throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
       }
-      repo[vote.key] = vote.value;
+      repo.balances[vote.recipient] -= vote.qty;
+    } else if (vote.type === "removeMember") {
+      if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
+        throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+      }
+      delete repo.balances[vote.recipient];
+    } else if (vote.type === "set") {
+      if (vote.key.substring(0, 9) === "settings.") {
+        let key = getStateProperty(vote.key);
+        updateSetting(repo, key, vote.value);
+      } else {
+        if (vote.key === "owner" && !isProposedOwnershipValid(repo, vote.type, vote.qty, vote.value)) {
+          throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+        }
+        repo[vote.key] = vote.value;
+      }
+    } else if (vote.type === "evolve") {
+      repo.evolve = vote.value;
+    } else if (vote.type === "withdrawal") {
+      const tokenObj = repo.tokens.find((token) => token.txID === vote.txID);
+      const contractId = tokenObj.tokenId;
+      const wdResult = yield SmartWeave.contracts.write(contractId, {
+        function: "transfer",
+        target: vote.target,
+        qty: vote.qty
+      });
+      if (wdResult.type !== "ok") {
+        throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
+      }
+      tokenObj.balance -= vote.qty;
     }
-  } else if (vote.type === "evolve") {
-    repo.evolve = vote.value;
-  } else if (vote.type === "withdrawal") {
-    const tokenObj = repo.tokens.find((token) => token.txID === vote.txID);
-    const contractId = tokenObj.tokenId;
-    const wdResult = await SmartWeave.contracts.write(contractId, {
-      function: "transfer",
-      target: vote.target,
-      qty: vote.qty
-    });
-    if (wdResult.type !== "ok") {
-      throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
-    }
-    tokenObj.balance -= vote.qty;
-  }
+  });
 }
 function updateSetting(repo, key, value) {
   let found = false;
@@ -632,13 +659,15 @@ function updateSetting(repo, key, value) {
     repo.settings.push([key, value]);
   }
 }
-async function getTokenInfo(assetState) {
-  const settings = new Map(assetState.settings);
-  return {
-    name: assetState.name,
-    ticker: assetState.ticker,
-    logo: settings.get("communityLogo")
-  };
+function getTokenInfo(assetState) {
+  return __async(this, null, function* () {
+    const settings = new Map(assetState.settings);
+    return {
+      name: assetState.name,
+      ticker: assetState.ticker,
+      logo: settings.get("communityLogo")
+    };
+  });
 }
 function isProposedOwnershipValid(repo, proposalType, qty, member) {
   let valid = true;

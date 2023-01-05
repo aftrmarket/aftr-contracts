@@ -78,10 +78,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let lockLength = input.lockLength;
         let start = input.start;
         let txID = input.txID;
-        
+
 
         // Check valid inputs, caller is member with balance or member in vault
-        if (!(caller in balances) || !(balances[caller] > 0)) { 
+        if (!(caller in balances) || !(balances[caller] > 0)) {
             // Not in balances, now check vault
             let totalBalance = 0;
             if (state.vault[caller]) {
@@ -98,7 +98,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         // Default is weighted meaning votes are weighted by balance
         // If the votingSystem is equal (or distributed evenly):  all votes counted equally
         // Make sure to count the members in the balances object and the vault objects
-        
+
         let totalWeight = 0;
         let votingPower = JSON.parse(JSON.stringify(balances));
 
@@ -109,7 +109,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             }
 
             // votingPower and totalWeight is already known
-            votingPower = { [caller] : 1 };
+            votingPower = { [caller]: 1 };
             totalWeight = 1;
 
         } else if (votingSystem === 'equal') {
@@ -121,9 +121,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                     totalWeight++;
                 } else {
                     delete votingPower[addr];
-                }   
+                }
             }
-        
+
             // Next, get any members that are in the vault, but not in the balances object
             for (let addr in state.vault) {
                 if (!(addr in votingPower)) {
@@ -143,7 +143,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             for (let member in balances) {
                 totalWeight += balances[member];
             }
-            
+
             // Sum all the rest of the balances in the vault object
             for (let addr in state.vault) {
                 let totalLockedBalance = 0;
@@ -159,7 +159,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             }
         } else {
             throw new ContractError("Invalid voting system.");
-        }     
+        }
 
         // Validate input for member and token management
         let recipient = '';
@@ -198,7 +198,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 throw new ContractError("Error in input.  Recipient not supplied.");
             }
             recipient = isArweaveAddress(input.recipient);
-            
+
             if (!(qty) || !(qty > 0)) {
                 throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
             }
@@ -278,7 +278,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
             // Get current value for key in state
             let currentValue = String(getStateValue(state, key));
-            note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);           
+            note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
         } else if (voteType === 'withdrawal') {
             if (!(qty) || !(qty > 0)) {
                 throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
@@ -293,7 +293,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             target = isArweaveAddress(target);
 
             // Is this qty available for withdrawal?
-            const tokenObj = state.tokens?.find( (token) => (token.txID === txID) );
+            const tokenObj = state.tokens?.find((token) => (token.txID === txID));
 
             if (tokenObj && tokenObj.balance < qty) {
                 throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
@@ -347,7 +347,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     if (input.function === "vote") {
         const voteId = input.voteId;
         const cast = input.cast;
-        
+
         const vote = votes.find(vote => vote.id === voteId);
 
         if (typeof vote === 'undefined') {
@@ -359,10 +359,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         if (state.ownership === 'single' && caller !== state.owner) {
             throw new ContractError("Caller is not the owner of the repo.");
-        
-        //@ts-expect-error
+
+            //@ts-expect-error
         } else if (!(caller in vote.votingPower)) {
-        //if (!(caller in balances || caller in state.vault)) {
+            //if (!(caller in balances || caller in state.vault)) {
             throw new ContractError("Caller isn't a member of the repo and therefore isn't allowed to vote.");
         } else {
             // Get caller's votingPower
@@ -385,7 +385,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (vote.voted.includes(caller)) {
             throw new ContractError("Caller has already voted.");
         }
-        
+
         // Record vote
         if (cast === 'yay') {
             //@ts-expect-error
@@ -400,7 +400,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         vote.voted.push(caller);
     }
     /******* END VOTING FUNCTIONS */
-     
+
     if (input.function === "transfer") {
         const target = input.target;
         const qty = input.qty;
@@ -454,10 +454,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             throw new ContractError("Qty is invalid.");
         }
 
-        let lockLength = 0;
-        if (input.lockLength) {
-            lockLength = input.lockLength;
-        }
+        let lockLength = input.lockLength ? input.lockLength : 0;
 
         /*** Call the claim function on the depositing contract */
         const transferResult = await SmartWeave.contracts.write(input.tokenId, {
@@ -489,7 +486,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             // tokens array is not in repo
             state['tokens'] = [];
         }
-        
+
         //@ts-expect-error
         state.tokens.push(txObj);
     }
@@ -499,7 +496,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     if (input.function === "allow") {
         target = input.target;
         const quantity = input.qty;
-    
+
         if (!Number.isInteger(quantity) || quantity === undefined) {
             throw new ContractError("Invalid value for quantity. Must be an integer.");
         }
@@ -515,7 +512,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (balances[caller] < quantity || !balances[caller] || balances[caller] == undefined || balances[caller] == null || isNaN(balances[caller])) {
             throw new ContractError("Caller balance not high enough to make a balance of " + quantity + "claimable.");
         }
-    
+
         balances[caller] -= quantity;
 
         state.claimable.push({
@@ -531,9 +528,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         const txID = input.txID;
         // Claim qty
         const qty = input.qty;
-    
+
         if (!state.claimable.length) {
-          throw new ContractError("Contract has no claims available.");
+            throw new ContractError("Contract has no claims available.");
         }
         // Search for txID inside of `claimable`
         let obj, index;
@@ -563,10 +560,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             balances[caller] = 0;
         }
         balances[caller] += obj.qty;
-    
+
         // remove from claimable
         state.claimable.splice(index, 1);
-    
+
         // add txID to `claims`
         state.claims.push(txID);
     }
@@ -586,7 +583,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
 
         const multiActions = input.actions;
-        
+
         if (multiActions.length > multiLimit) {
             throw new ContractError("The Multi-interactions call exceeds the maximum number of interations.");
         }
@@ -594,9 +591,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let iteration = 1;
         let updatedState = state;
 
-        for(let nextAction of multiActions) {
+        for (let nextAction of multiActions) {
             nextAction.input.iteration = iteration;
-            
+
             // Don't allow nested multiActions
             if (nextAction.input.function === 'multiInteraction') {
                 throw new ContractError("Nested Multi-interactions are not allowed.");
@@ -605,7 +602,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             // Add the caller to the action
             nextAction.caller = caller;
 
-            let result =  await handle(updatedState, nextAction);
+            let result = await handle(updatedState, nextAction);
             //@ts-expect-error
             updatedState = result.state;
 
@@ -623,7 +620,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (Array.isArray(votes)) {
         //@ts-expect-error
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));        
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));
         if (concludedVotes.length > 0) {
             await finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
         }
@@ -652,7 +649,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             for (let bal of state.vault[caller]) {
                 vaultBal += bal.balance;
             }
-        } catch(e) {
+        } catch (e) {
             // Vault not iterable
         }
         return { result: { target, balance, vaultBal } };
@@ -679,7 +676,7 @@ function scanVault(repo, block) {
 
     for (const [key, arr] of Object.entries(repo.vault)) {
         // @ts-expect-error
-        for(let i=0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i++) {
             //@ts-expect-error
             if (arr[i].end <= block) {
                 // Transfer balance
@@ -690,7 +687,7 @@ function scanVault(repo, block) {
                     //@ts-expect-error
                     repo.balances[key] = arr[i].balance;
                 }
-    
+
                 // Remove object
                 repo.vault[key].splice(i, 1);
                 i--;
@@ -765,9 +762,9 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
 
         // If single owned or total support has been met, pass vote (voteLength doesn't matter)
         if (repo.ownership === 'single' || vote.yays / vote.totalWeight > support) {
-                vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
-                vote.status = 'passed';
-                await modifyRepo(repo, vote);
+            vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
+            vote.status = 'passed';
+            await modifyRepo(repo, vote);
         } else if (vote.nays / vote.totalWeight > support) {
             vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
             vote.status = "failed";
@@ -815,7 +812,7 @@ async function modifyRepo(repo, vote) {
             repo.vault[vote.recipient].push(vaultObj);
         } else {
             // Add new
-            repo.vault[vote.recipient] = [ vaultObj ];
+            repo.vault[vote.recipient] = [vaultObj];
         }
     } else if (vote.type === 'subtractBalance') {
         if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
@@ -842,9 +839,9 @@ async function modifyRepo(repo, vote) {
         repo.evolve = vote.value;
     } else if (vote.type === 'withdrawal') {
         // Find the token object that is to be w/d
-        const tokenObj = repo.tokens.find( (token) => (token.txID === vote.txID) );
+        const tokenObj = repo.tokens.find((token) => (token.txID === vote.txID));
         const contractId = tokenObj.tokenId;
-        const wdResult = await SmartWeave.contracts.write(contractId , {
+        const wdResult = await SmartWeave.contracts.write(contractId, {
             function: "transfer",
             target: vote.target,
             qty: vote.qty
@@ -878,7 +875,7 @@ function updateSetting(repo, key, value) {
 async function getTokenInfo(assetState: object) {
     //@ts-expect-error
     const settings: Map<string, any> = new Map(assetState.settings);
-    
+
     return {
         //@ts-expect-error
         name: assetState.name,
@@ -901,7 +898,7 @@ function isProposedOwnershipValid(repo: StateInterface, proposalType: string, qt
             // Loop through proposed balances and determine is anyone will have a balance left
             let newBalances = JSON.parse(JSON.stringify(repo.balances));
             delete newBalances[member];
-            
+
             for (let addr in newBalances) {
                 if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
                     valid = true;
@@ -914,7 +911,7 @@ function isProposedOwnershipValid(repo: StateInterface, proposalType: string, qt
     } else if (proposalType === "subtractBalance") {
         if (repo.ownership === "single" && repo.owner === member && repo.balances[member] - qty < 1) {
             valid = false;
-        } 
+        }
         if (repo.ownership === "multi") {
             // Loop through proposed balances and determine is anyone will have a balance left
             let newBalances = JSON.parse(JSON.stringify(repo.balances));

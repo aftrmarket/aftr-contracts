@@ -67,7 +67,7 @@ async function handle(state, action) {
     let votingPower = JSON.parse(JSON.stringify(balances));
     if (state.ownership === "single") {
       if (caller !== state.owner) {
-        throw new ContractError("Caller is not the owner of the repo.");
+        ThrowError("Caller is not the owner of the vehicle.");
       }
       votingPower = { [caller]: 1 };
       totalWeight = 1;
@@ -131,102 +131,81 @@ async function handle(state, action) {
     } else if (start < 0 || typeof start !== "number") {
       ThrowError("Invalid Start value.");
     }
-    if (voteType === "evolve") {
-      if (!input.value) {
-        throw new ContractError("Error in input.  No value exists.");
-      }
-      const evolveSrcId = isArweaveAddress(input.value);
-      note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
-    } else if (voteType === "addBalance" || voteType === "subtractBalance" || voteType === "addLocked" || voteType === "addMember" || voteType === "removeMember") {
+    if (voteType === "mint" || voteType === "burn" || voteType === "mintLocked" || voteType === "addMember" || voteType === "removeMember") {
       if (!input.recipient) {
-        throw new ContractError("Error in input.  Recipient not supplied.");
+        ThrowError("Error in input.  Recipient not supplied.");
       }
       recipient = isArweaveAddress(input.recipient);
       if (!qty || !(qty > 0)) {
-        throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
+        ThrowError("Error in input.  Quantity not supplied or is invalid.");
       }
-      if (voteType === "addBalance" || voteType === "addMember" || voteType === "addLocked") {
+      if (voteType === "mint" || voteType === "addMember" || voteType === "mintLocked") {
         let totalTokens = 0;
         for (let wallet in balances) {
           totalTokens += balances[wallet];
         }
         if (totalTokens + qty > Number.MAX_SAFE_INTEGER) {
-          throw new ContractError("Proposed quantity is too large.");
+          ThrowError("Proposed quantity is too large.");
         }
       }
-      if (voteType === "subtractBalance") {
+      if (voteType === "burn") {
         if (!balances[recipient]) {
-          throw new ContractError("Request to decrease for recipient not in balances.");
+          ThrowError("Request to burn for recipient not in balances.");
         }
         if (qty > balances[recipient]) {
-          throw new ContractError("Invalid quantity.  Can't decrease more than recipient has.");
-        }
-        if (state.ownership === "single" && balances[recipient] - qty < 1 && recipient === state.owner) {
-          throw new ContractError("Invalid quantity.  Can't decrease all the owner's balance.  The owner must have at least a balance of 1 or the repo will be rendered useless.");
+          ThrowError("Invalid quantity.  Can't burn more than recipient has.");
         }
       }
       if (voteType === "removeMember") {
         if (recipient === state.owner) {
-          throw new ContractError("Can't remove owner from balances.");
+          ThrowError("Can't remove owner from balances.");
         }
       }
       if (voteType === "addMember") {
         if (recipient === SmartWeave.contract.id) {
-          throw new ContractError("Can't add the repo as a member.");
+          ThrowError("Can't add the vehicle as a member.");
         }
       }
-      if (!isProposedOwnershipValid(state, voteType, qty, recipient)) {
-        throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-      }
-      if (voteType === "addBalance") {
-        note = "Add balance of " + String(qty) + " to " + recipient;
-      } else if (voteType === "addLocked") {
-        note = "Add and Lock a balance of " + String(qty) + " for " + recipient;
-      } else if (voteType === "subtractBalance") {
-        note = "Subtract balance of " + String(qty) + " for " + recipient;
+      if (voteType === "mint") {
+        note = "Mint " + String(qty) + " tokens for " + recipient;
+      } else if (voteType === "mintLocked") {
+        note = "Mint and Lock " + String(qty) + " tokens for " + recipient;
+      } else if (voteType === "burn") {
+        note = "Burn " + String(qty) + " tokens for " + recipient;
       } else if (voteType === "addMember") {
-        note = "Add new member, " + recipient + ", with a balance of " + String(qty);
+        note = "Add new member, " + recipient + ", and mint " + String(qty) + " tokens";
       } else if (voteType === "removeMember") {
-        note = "Remove member, " + recipient + ", with a balance of " + String(qty);
+        note = "Remove member, " + recipient + ", and burn their " + String(qty) + " tokens";
       }
     } else if (voteType === "set") {
       if (!key || key === "") {
-        throw new ContractError("Invalid Key.");
+        ThrowError("Invalid Key.");
       }
       if (!value || value === "") {
-        throw new ContractError("Invalid Value.");
-      }
-      const validationResponce = validateProperties(key, value);
-      if (validationResponce !== "") {
-        throw new ContractError(validationResponce);
-      }
-      if (key === "owner") {
-        if (!isProposedOwnershipValid(state, voteType, qty, value)) {
-          throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-        }
+        ThrowError("Invalid Value.");
       }
       let currentValue = String(getStateValue(state, key));
       note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
+    } else if (voteType === "assetDirective") {
     } else if (voteType === "withdrawal") {
       if (!qty || !(qty > 0)) {
-        throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
+        ThrowError("Error in input.  Quantity not supplied or is invalid.");
       }
       if (!input.txID) {
-        throw new ContractError("Error in input.  No Transaction ID found.");
+        ThrowError("Error in input.  No Transaction ID found.");
       }
       txID = input.txID;
       if (!target2) {
-        throw new ContractError("Error in input.  Target not supplied.");
+        ThrowError("Error in input.  Target not supplied.");
       }
       target2 = isArweaveAddress(target2);
-      const tokenObj = state.tokens?.find((token) => token.txID === txID);
-      if (tokenObj && tokenObj.balance < qty) {
-        throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
-      }
     } else {
-      throw new ContractError("Vote Type not supported.");
+      ThrowError("Vote Type not supported.");
     }
-    let voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
+    let voteId = String(block) + "txTEST";
+    if (mode !== "TEST") {
+      voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
+    }
     let vote = {
       status: "active",
       type: voteType,
@@ -268,31 +247,31 @@ async function handle(state, action) {
     const cast = input.cast;
     const vote = votes.find((vote2) => vote2.id === voteId);
     if (typeof vote === "undefined") {
-      throw new ContractError("Vote does not exist.");
+      ThrowError("Vote does not exist.");
     }
     let voterBalance = 0;
     if (state.ownership === "single" && caller !== state.owner) {
-      throw new ContractError("Caller is not the owner of the repo.");
+      ThrowError("Caller is not the owner of the vehicle.");
     } else if (!(caller in vote.votingPower)) {
-      throw new ContractError("Caller isn't a member of the repo and therefore isn't allowed to vote.");
+      ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
     } else {
       voterBalance = vote.votingPower[caller];
     }
     if (voterBalance == 0) {
-      throw new ContractError("Caller's balance is 0 and therefore isn't allowed to vote.");
+      ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
     }
     if (vote.status !== "active") {
-      throw new ContractError("Vote is not active.");
+      ThrowError("Vote is not active.");
     }
     if (vote.voted.includes(caller)) {
-      throw new ContractError("Caller has already voted.");
+      ThrowError("Caller has already voted.");
     }
     if (cast === "yay") {
       vote.yays += voterBalance;
     } else if (cast === "nay") {
       vote.nays += voterBalance;
     } else {
-      throw new ContractError("Invalid vote cast.");
+      ThrowError("Invalid vote cast.");
     }
     vote.voted.push(caller);
   }
@@ -302,25 +281,25 @@ async function handle(state, action) {
     const callerAddress = isArweaveAddress(caller);
     const targetAddress = isArweaveAddress(target2);
     if (!Number.isInteger(qty)) {
-      throw new ContractError('Invalid value for "qty". Must be an integer.');
+      ThrowError('Invalid value for "qty". Must be an integer.');
     }
     if (!targetAddress) {
-      throw new ContractError("No target specified.");
+      ThrowError("No target specified.");
     }
     if (qty <= 0 || callerAddress === targetAddress) {
-      throw new ContractError("Invalid token transfer.");
+      ThrowError("Invalid token transfer.");
     }
-    if (!balances[callerAddress] || balances[callerAddress] == void 0 || balances[callerAddress] == null || isNaN(balances[callerAddress])) {
-      throw new ContractError("Caller doesn't own a balance in the Repo.");
+    if (!(callerAddress in balances)) {
+      ThrowError("Caller doesn't own a balance in the Vehicle.");
     }
     if (balances[callerAddress] < qty) {
-      throw new ContractError(`Caller balance not high enough to send ${qty} token(s)!`);
+      ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
     }
     if (SmartWeave.contract.id === target2) {
-      throw new ContractError("A repo token cannot be transferred to itself because it would add itself the balances object of the repo, thus changing the membership of the repo without a vote.");
+      ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
     }
     if (state.ownership === "single" && callerAddress === state.owner && balances[callerAddress] - qty <= 0) {
-      throw new ContractError("Invalid transfer because the owner's balance would be 0.");
+      ThrowError("Invalid transfer because the owner's balance would be 0.");
     }
     balances[callerAddress] -= qty;
     if (targetAddress in balances) {
@@ -329,18 +308,48 @@ async function handle(state, action) {
       balances[targetAddress] = qty;
     }
   }
+  if (input.function === "withdrawal") {
+    if (!state.tokens) {
+      ThrowError("This vehicle has no tokens.");
+    }
+    if (!input.txID) {
+      ThrowError("Missing Transaction ID.");
+    }
+    if (!input.voteId) {
+      ThrowError("Missing Vote ID.");
+    }
+    const tokenIndex = state.tokens.findIndex((token) => token.txID === input.txID);
+    if (tokenIndex !== -1) {
+      if (state.tokens[tokenIndex].withdrawals) {
+        const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex((wd) => wd.voteId === input.voteId);
+        if (wdIndex !== -1) {
+          let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
+          delete invokeInput.voteId;
+          delete invokeInput.txID;
+          delete invokeInput.processed;
+          invoke(state, invokeInput);
+          state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
+          state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter((wd) => wd.voteId !== input.voteId);
+        }
+      } else {
+        ThrowError("Withdrawal not found.");
+      }
+    } else {
+      ThrowError("Invalid withdrawal transaction.");
+    }
+  }
   if (input.function === "deposit") {
     if (!input.txID) {
-      throw new ContractError("The transaction is not valid.  Tokens were not transferred to the repo.");
+      ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
     }
     if (!input.tokenId) {
-      throw new ContractError("No token supplied. Tokens were not transferred to the repo.");
+      ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
     }
     if (input.tokenId === SmartWeave.contract.id) {
-      throw new ContractError("Deposit not allowed because you can't deposit an asset of itself.");
+      ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
     }
     if (!input.qty || typeof +input.qty !== "number" || +input.qty <= 0) {
-      throw new ContractError("Qty is invalid.");
+      ThrowError("Qty is invalid.");
     }
     let lockLength = 0;
     if (input.lockLength) {
@@ -352,7 +361,7 @@ async function handle(state, action) {
       qty: input.qty
     });
     if (transferResult.type !== "ok") {
-      throw new ContractError("Unable to deposit token " + input.tokenId);
+      ThrowError("Unable to deposit token " + input.tokenId);
     }
     const tokenInfo = await getTokenInfo(transferResult.state);
     const txObj = {
@@ -375,21 +384,21 @@ async function handle(state, action) {
     target = input.target;
     const quantity = input.qty;
     if (!Number.isInteger(quantity) || quantity === void 0) {
-      throw new ContractError("Invalid value for quantity. Must be an integer.");
+      ThrowError("Invalid value for quantity. Must be an integer.");
     }
     if (!target) {
-      throw new ContractError("No target specified.");
-    }
-    if (target === SmartWeave.contract.id) {
-      throw new ContractError("Can't setup claim to transfer a balance to itself.");
+      ThrowError("No target specified.");
     }
     if (quantity <= 0 || caller === target) {
-      throw new ContractError("Invalid balance transfer.");
+      ThrowError("Invalid token transfer.");
     }
-    if (balances[caller] < quantity || !balances[caller] || balances[caller] == void 0 || balances[caller] == null || isNaN(balances[caller])) {
-      throw new ContractError("Caller balance not high enough to make a balance of " + quantity + "claimable.");
+    if (balances[caller] < quantity) {
+      ThrowError("Caller balance not high enough to make claimable " + quantity + " token(s).");
     }
     balances[caller] -= quantity;
+    if (balances[caller] === null || balances[caller] === void 0) {
+      balances[caller] = 0;
+    }
     state.claimable.push({
       from: caller,
       to: target,
@@ -401,7 +410,7 @@ async function handle(state, action) {
     const txID = input.txID;
     const qty = input.qty;
     if (!state.claimable.length) {
-      throw new ContractError("Contract has no claims available.");
+      ThrowError("Contract has no claims available.");
     }
     let obj, index;
     for (let i = 0; i < state.claimable.length; i++) {
@@ -411,17 +420,17 @@ async function handle(state, action) {
       }
     }
     if (obj === void 0) {
-      throw new ContractError("Unable to find claim.");
+      ThrowError("Unable to find claim.");
     }
     if (obj.to !== caller) {
-      throw new ContractError("Claim not addressed to caller.");
+      ThrowError("Claim not addressed to caller.");
     }
     if (obj.qty !== qty) {
-      throw new ContractError("Claiming incorrect quantity of tokens.");
+      ThrowError("Claiming incorrect quantity of tokens.");
     }
     for (let i = 0; i < state.claims.length; i++) {
       if (state.claims[i] === txID) {
-        throw new ContractError("This claim has already been made.");
+        ThrowError("This claim has already been made.");
       }
     }
     if (!balances[caller]) {
@@ -476,7 +485,6 @@ async function handle(state, action) {
     }
   }
   /*** PLAYGROUND FUNCTIONS END */
-
 
 
   if (input.function === "multiInteraction") {
@@ -535,27 +543,27 @@ function isArweaveAddress(addy) {
   }
   return address;
 }
-function scanVault(repo, block) {
-  for (const [key, arr] of Object.entries(repo.vault)) {
+function scanVault(vehicle, block) {
+  for (const [key, arr] of Object.entries(vehicle.vault)) {
     for (let i = 0; i < arr.length; i++) {
       if (arr[i].end <= block) {
-        if (key in repo.balances) {
-          repo.balances[key] += arr[i].balance;
+        if (key in vehicle.balances) {
+          vehicle.balances[key] += arr[i].balance;
         } else {
-          repo.balances[key] = arr[i].balance;
+          vehicle.balances[key] = arr[i].balance;
         }
-        repo.vault[key].splice(i, 1);
+        vehicle.vault[key].splice(i, 1);
         i--;
       }
-      if (repo.vault[key].length == 0) {
-        delete repo.vault[key];
+      if (vehicle.vault[key].length == 0) {
+        delete vehicle.vault[key];
       }
     }
   }
 }
-function returnLoanedTokens(repo, block) {
-  if (Array.isArray(repo.tokens)) {
-    const unlockedTokens = repo.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
+function returnLoanedTokens(vehicle, block) {
+  if (Array.isArray(vehicle.tokens)) {
+    const unlockedTokens = vehicle.tokens.filter((token) => token.lockLength !== 0 && token.start + token.lockLength <= block);
     unlockedTokens.forEach((token) => processWithdrawal(vehicle, token));
   }
 }
@@ -565,35 +573,55 @@ function getStateProperty(key) {
   }
   return key;
 }
-function getStateValue(repo, key) {
-  const settings = new Map(repo.settings);
+function getStateValue(vehicle, key) {
+  const settings = new Map(vehicle.settings);
   let value = "";
   if (key.substring(0, 9) === "settings.") {
     let setting = key.substring(9);
     value = settings.get(setting);
   } else {
-    value = repo[key];
+    value = vehicle[key];
   }
   return value;
 }
-function processWithdrawal(repo, tokenObj) {
-  if (Array.isArray(repo.tokens)) {
-    repo.tokens = repo.tokens.filter((token) => token.txID !== tokenObj.txID);
+function processWithdrawal(vehicle, tokenObj) {
+  if (Array.isArray(vehicle.tokens)) {
+    vehicle.tokens = vehicle.tokens.filter((token) => token.txID !== tokenObj.txID);
   }
 }
-if (key === "owner" && !/[a-z0-9_-]{43}/i.test(value)) {
-  response = "Proposed owner is invalid.";
+function invoke(state, input) {
+  if (!input.invocation) {
+    ThrowError("Missing function invocation.");
+  }
+  if (!input.invocation.function) {
+    ThrowError("Invalid invocation.");
+  }
+  if (!input.foreignContract) {
+    ThrowError("Missing Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid Foreign Contract ID.");
+  }
+  if (typeof input.foreignContract !== "string") {
+    ThrowError("Invalid input.");
+  }
+  if (input.foreignContract === SmartWeave.contract.id) {
+    ThrowError("A Foreign Call cannot call itself.");
+  }
+  state.foreignCalls.push({
+    txID: SmartWeave.transaction.id,
+    contract: input.foreignContract,
+    input: input.invocation
+  });
 }
-return response;
-}
-async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
+async function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
   for (let vote of concludedVotes) {
     let finalQuorum = 0;
     let finalSupport = 0;
-    if (repo.ownership === "single" || vote.yays / vote.totalWeight > support) {
-      vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
+    if (vehicle.ownership === "single" || vote.yays / vote.totalWeight > support) {
+      vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
       vote.status = "passed";
-      await modifyRepo(repo, vote);
+      await modifyVehicle(vehicle, vote);
     } else if (vote.nays / vote.totalWeight > support) {
       vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
       vote.status = "failed";
@@ -606,7 +634,7 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
         finalSupport = vote.yays / (vote.yays + vote.nays);
         vote.status = "passed";
         vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
-        await modifyRepo(repo, vote);
+        await modifyVehicle(vehicle, vote);
       }
     } else {
       vote.status = "failed";
@@ -617,48 +645,37 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
   }
   ;
 }
-async function modifyRepo(repo, vote) {
-  if (vote.type === "addBalance" || vote.type === "addMember") {
-    if (vote.recipient in repo.balances) {
-      repo.balances[vote.recipient] += vote.qty;
+async function modifyVehicle(vehicle, vote) {
+  if (vote.type === "mint" || vote.type === "addMember") {
+    if (vote.recipient in vehicle.balances) {
+      vehicle.balances[vote.recipient] += vote.qty;
     } else {
-      repo.balances[vote.recipient] = vote.qty;
+      vehicle.balances[vote.recipient] = vote.qty;
     }
-  } else if (vote.type === "addLocked") {
+  } else if (vote.type === "mintLocked") {
     let vaultObj = {
       balance: vote.qty,
       start: vote.start,
       end: vote.start + vote.lockLength
     };
-    if (vote.recipient in repo.vault) {
-      repo.vault[vote.recipient].push(vaultObj);
+    if (vote.recipient in vehicle.vault) {
+      vehicle.vault[vote.recipient].push(vaultObj);
     } else {
-      repo.vault[vote.recipient] = [vaultObj];
+      vehicle.vault[vote.recipient] = [vaultObj];
     }
-  } else if (vote.type === "subtractBalance") {
-    if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
-      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-    }
-    repo.balances[vote.recipient] -= vote.qty;
+  } else if (vote.type === "burn") {
+    vehicle.balances[vote.recipient] -= vote.qty;
   } else if (vote.type === "removeMember") {
-    if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
-      throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-    }
-    delete repo.balances[vote.recipient];
+    delete vehicle.balances[vote.recipient];
   } else if (vote.type === "set") {
     if (vote.key.substring(0, 9) === "settings.") {
       let key = getStateProperty(vote.key);
-      updateSetting(repo, key, vote.value);
+      updateSetting(vehicle, key, vote.value);
     } else {
-      if (vote.key === "owner" && !isProposedOwnershipValid(repo, vote.type, vote.qty, vote.value)) {
-        throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
-      }
-      repo[vote.key] = vote.value;
+      vehicle[vote.key] = vote.value;
     }
-  } else if (vote.type === "evolve") {
-    repo.evolve = vote.value;
   } else if (vote.type === "withdrawal") {
-    const tokenObj = repo.tokens.find((token) => token.txID === vote.txID);
+    const tokenObj = vehicle.tokens.find((token) => token.txID === vote.txID);
     const contractId = tokenObj.tokenId;
     const wdResult = await SmartWeave.contracts.write(contractId, {
       function: "transfer",
@@ -666,14 +683,14 @@ async function modifyRepo(repo, vote) {
       qty: vote.qty
     });
     if (wdResult.type !== "ok") {
-      throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
+      ThrowError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
     }
     tokenObj.balance -= vote.qty;
   }
 }
-function updateSetting(repo, key, value) {
+function updateSetting(vehicle, key, value) {
   let found = false;
-  for (let setting of repo.settings) {
+  for (let setting of vehicle.settings) {
     if (setting[0] === key) {
       setting[1] = value;
       found = true;
@@ -681,7 +698,7 @@ function updateSetting(repo, key, value) {
     }
   }
   if (!found) {
-    repo.settings.push([key, value]);
+    vehicle.settings.push([key, value]);
   }
 }
 async function getTokenInfo(assetState) {
@@ -691,47 +708,4 @@ async function getTokenInfo(assetState) {
     ticker: assetState.ticker,
     logo: settings.get("communityLogo")
   };
-}
-function isProposedOwnershipValid(repo, proposalType, qty, member) {
-  let valid = true;
-  if (proposalType === "subtractBalance" && !Number.isInteger(qty)) {
-    valid = false;
-  }
-  if (proposalType === "removeMember") {
-    if (repo.ownership === "single" && repo.owner === member) {
-      valid = false;
-    } else if (repo.ownership === "multi") {
-      let newBalances = JSON.parse(JSON.stringify(repo.balances));
-      delete newBalances[member];
-      for (let addr in newBalances) {
-        if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
-          valid = true;
-          break;
-        } else {
-          valid = false;
-        }
-      }
-    }
-  } else if (proposalType === "subtractBalance") {
-    if (repo.ownership === "single" && repo.owner === member && repo.balances[member] - qty < 1) {
-      valid = false;
-    }
-    if (repo.ownership === "multi") {
-      let newBalances = JSON.parse(JSON.stringify(repo.balances));
-      newBalances[member] -= qty;
-      for (let addr in newBalances) {
-        if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
-          valid = true;
-          break;
-        } else {
-          valid = false;
-        }
-      }
-    }
-  } else if (proposalType === "set") {
-    if (repo.ownership === "single" && (repo.balances[member] < 1 || !repo.balances[member])) {
-      valid = false;
-    }
-  }
-  return valid;
 }

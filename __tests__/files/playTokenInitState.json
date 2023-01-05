@@ -1,0 +1,18 @@
+{
+    "name" : "Play Token",
+    "ticker" : "PLAY",
+    "balances" : {},
+    "vault" : {},
+    "claimable": [],
+    "claims": [],
+    "evolve": "",
+    "settings" : [
+        [ "quorum", 0.5 ],
+        [ "support", 0.5],
+        [ "voteLength", 2000 ],
+        [ "communityAppUrl", "" ],
+        [ "communityDiscussionLinks", "" ],
+        [ "communityDescription", "This token is distributed to users so that they can experiment with passing tokens between protocols." ],
+        [ "communityLogo", ""]
+    ]
+}

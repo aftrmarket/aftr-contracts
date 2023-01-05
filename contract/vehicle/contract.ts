@@ -1,17 +1,5 @@
-// import { json } from "stream/consumers";
-// import { parseJsonText } from "typescript";
-import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface, ForeignCallInterface } from "./faces";
+import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface } from "./faces";
 
-const mode = 'PROD';    // If TEST, SmartWeave not used & messages print to console.
-
-function ThrowError(msg: string) {
-    // @ts-expect-error
-    if (mode === 'TEST') {
-        throw('ERROR: ' + msg);
-    } else {
-        throw new ContractError(msg);
-    }
-}
 declare const ContractError: any;
 declare const SmartWeave: any;
 
@@ -19,16 +7,9 @@ declare const SmartWeave: any;
 const multiLimit = 1000;    // Limit recursive calls to 1000 (need to evaluate this)
 let multiIteration = 0;
 
-/*** Tip Constants */
-const tipCreateVehicle = 0;
-const tipProposeVote = 0;
-const tipVote = 0;
-const tipMemberMgmt = 0;
-/*** */
-
 export async function handle(state: StateInterface, action: ActionInterface) {
     const balances = state.balances;
-    //const leases = state.leases;      /*** Leasing seats from vehicle is a future enhancement / use case */
+    //const leases = state.leases;      /*** Leasing seats from repo is a future enhancement / use case */
     const input = action.input;
     const caller = action.caller;
     const settings: Map<string, any> = new Map(state.settings);
@@ -45,20 +26,14 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     /***    2. Because multi-interactions are recursive, a maximum limit is set to protect the contract (not sure if this is necessary, but just in case :) */
     if (typeof input.iteration !== 'undefined') {
         if (isNaN(input.iteration)) {
-            ThrowError("Invalid value for iteration.");
+            throw new ContractError("Invalid value for iteration.");
         } else {
             multiIteration = input.iteration;
         }
     }
     /*** */
 
-    let block = 0;
-    // @ts-expect-error
-    if (mode === 'TEST') {
-        block = 210;
-    } else {
-        block = +SmartWeave.block.height;
-    }
+    const block = +SmartWeave.block.height;
 
     if (input.function === "balance") {
         // View balance
@@ -66,7 +41,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         target = isArweaveAddress(input.target || caller);
 
         if (typeof target !== "string") {
-            ThrowError("Must specificy target to get balance for.");
+            throw new ContractError("Must specificy target to get balance for.");
         }
         balance = 0;
         if (target in balances) {
@@ -81,10 +56,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         const qty = input.qty;        // Number of seats to lease
 
         if (!Number.isInteger(qty)) {
-            ThrowError('Invalid value for "qty". Must be an integer.');
+            throw new ContractError('Invalid value for "qty". Must be an integer.');
         }
         if (qty <= 0 || caller === target) {
-            ThrowError("Invalid token lease.");
+            throw new ContractError("Invalid token lease.");
         }
         
         return { state };
@@ -103,44 +78,64 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         let lockLength = input.lockLength;
         let start = input.start;
         let txID = input.txID;
-        
-        // Check if single ownership
-        if (state.ownership === 'single') {  
-            // Single ownership, so caller must be creator
-            if (caller !== state.creator) {
-                ThrowError("Caller is not the creator of the vehicle.");
-            }
-        }
 
-        // Check valid inputs, caller is member with balance
-        if (!(caller in balances) || !(balances[caller] > 0)) { 
-            ThrowError("Caller is not allowed to propose vote.")
+
+        // Check valid inputs, caller is member with balance or member in vault
+        if (!(caller in balances) || !(balances[caller] > 0)) {
+            // Not in balances, now check vault
+            let totalBalance = 0;
+            if (state.vault[caller]) {
+                for (let bal of state.vault[caller]) {
+                    totalBalance += bal.balance;
+                }
+            }
+            if (totalBalance === 0) {
+                throw new ContractError("Caller is not allowed to propose vote.")
+            }
         }
 
         // Determine weight of a vote
         // Default is weighted meaning votes are weighted by balance
         // If the votingSystem is equal (or distributed evenly):  all votes counted equally
         // Make sure to count the members in the balances object and the vault objects
-        // Equal weighting can be dangerous if the balance holder decides to transfer tokens to many different people thus adding members to the vehicle. In this case, they could take over the vehicle.
-        
+
         let totalWeight = 0;
         let votingPower = JSON.parse(JSON.stringify(balances));
 
-        if (votingSystem === 'equal') {
-            // Total weight is just the number of members (in balances AND vault)
-            totalWeight = Object.keys(balances).length;
-            
-            // Determine votingPower at the current time of this proposal
-            // First, loop thru balances
-            for (let addr in votingPower) {
-                votingPower[addr] = 1;
+        if (state.ownership === 'single') {
+            // Validate - Single ownership, so caller must be owner
+            if (caller !== state.owner) {
+                throw new ContractError("Caller is not the owner of the repo.");
             }
-        
+
+            // votingPower and totalWeight is already known
+            votingPower = { [caller]: 1 };
+            totalWeight = 1;
+
+        } else if (votingSystem === 'equal') {
+            // Determine votingPower at the current time of this proposal
+            // First, loop thru balances, remove anyone with a 0 balance
+            for (let addr in votingPower) {
+                if (votingPower[addr] > 0) {
+                    votingPower[addr] = 1;
+                    totalWeight++;
+                } else {
+                    delete votingPower[addr];
+                }
+            }
+
             // Next, get any members that are in the vault, but not in the balances object
             for (let addr in state.vault) {
-                if (!(addr in balances)) {
-                    totalWeight++;
-                    votingPower[addr] = 1;
+                if (!(addr in votingPower)) {
+                    // Make sure a new address isn't in the vault and if it is, that its balance isn't 0
+                    let totalLockedBalance = 0;
+                    for (let bal of state.vault[addr]) {
+                        totalLockedBalance += bal.balance;
+                    }
+                    if (totalLockedBalance > 0) {
+                        totalWeight++;
+                        votingPower[addr] = 1;
+                    }
                 }
             }
         } else if (votingSystem === 'weighted') {
@@ -148,7 +143,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             for (let member in balances) {
                 totalWeight += balances[member];
             }
-            
+
             // Sum all the rest of the balances in the vault object
             for (let addr in state.vault) {
                 let totalLockedBalance = 0;
@@ -163,8 +158,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 }
             }
         } else {
-            ThrowError("Invalid voting system.");
-        }     
+            throw new ContractError("Invalid voting system.");
+        }
 
         // Validate input for member and token management
         let recipient = '';
@@ -175,12 +170,12 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         } else if (!voteLength || typeof voteLength === 'undefined') {
             voteLength = settings.get('voteLength');
         } else if (voteLength < 0) {
-            ThrowError("Invalid Vote Length.");
+            throw new ContractError("Invalid Vote Length.");
         }
 
         if (lockLength || typeof lockLength !== 'undefined') {
             if (lockLength < 0) {
-                ThrowError("Invalid Lock Length.");
+                throw new ContractError("Invalid Lock Length.");
             }
         } else {
             lockLength = 0;
@@ -189,105 +184,127 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (!start || typeof start === 'undefined') {
             start = block;
         } else if (start < 0 || typeof start !== 'number') {
-            ThrowError("Invalid Start value.");
+            throw new ContractError("Invalid Start value.");
         }
 
-        if (voteType === 'mint' || voteType === 'burn' || voteType === 'mintLocked' || voteType === 'addMember' || voteType === 'removeMember') {
+        if (voteType === "evolve") {
+            if (!input.value) {
+                throw new ContractError("Error in input.  No value exists.");
+            }
+            const evolveSrcId = isArweaveAddress(input.value);
+            note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
+        } else if (voteType === 'addBalance' || voteType === 'subtractBalance' || voteType === 'addLocked' || voteType === 'addMember' || voteType === 'removeMember') {
             if (!input.recipient) {
-                ThrowError("Error in input.  Recipient not supplied.");
+                throw new ContractError("Error in input.  Recipient not supplied.");
             }
             recipient = isArweaveAddress(input.recipient);
-            
+
             if (!(qty) || !(qty > 0)) {
-                ThrowError("Error in input.  Quantity not supplied or is invalid.");
+                throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
             }
 
             // Check to see if qty is too big
-            if (voteType === 'mint' || voteType === 'addMember' || voteType === 'mintLocked') {
+            if (voteType === 'addBalance' || voteType === 'addMember' || voteType === 'addLocked') {
                 let totalTokens = 0;
                 for (let wallet in balances) {
                     totalTokens += balances[wallet];
                 }
                 if (totalTokens + qty > Number.MAX_SAFE_INTEGER) {
-                    ThrowError("Proposed quantity is too large.");
+                    throw new ContractError("Proposed quantity is too large.");
                 }
             }
 
-            // Check to see if trying to burn more than possible
-            if (voteType === 'burn') {
+            // Check to see if trying to decrease more than possible
+            if (voteType === 'subtractBalance') {
                 if (!balances[recipient]) {
-                    ThrowError("Request to burn for recipient not in balances.");
+                    throw new ContractError("Request to decrease for recipient not in balances.");
                 }
                 if (qty > balances[recipient]) {
-                    ThrowError("Invalid quantity.  Can't burn more than recipient has.");
+                    throw new ContractError("Invalid quantity.  Can't decrease more than recipient has.");
+                }
+                if (state.ownership === 'single' && balances[recipient] - qty < 1 && recipient === state.owner) {
+                    throw new ContractError("Invalid quantity.  Can't decrease all the owner's balance.  The owner must have at least a balance of 1 or the repo will be rendered useless.");
                 }
             }
 
-            // Check for trying to remove creator
+            // Check for trying to remove owner
             if (voteType === 'removeMember') {
-                if (recipient === state.creator) {
-                    ThrowError("Can't remove creator from balances.");
+                if (recipient === state.owner) {
+                    throw new ContractError("Can't remove owner from balances.");
                 }
             }
 
-            // Check for trying to add the vehicle to itself as a member
+            // Check for trying to add the repo to itself as a member
             if (voteType === 'addMember') {
                 if (recipient === SmartWeave.contract.id) {
-                    ThrowError("Can't add the vehicle as a member.");
+                    throw new ContractError("Can't add the repo as a member.");
                 }
             }
 
-            if (voteType === 'mint') {
-                note = "Mint " + String(qty) + " tokens for " + recipient;
-            } else if (voteType === 'mintLocked') {
-                note = "Mint and Lock " + String(qty) + " tokens for " + recipient;
-            } else if (voteType === 'burn') {
-                note = "Burn " + String(qty) + " tokens for " + recipient;
+            if (!isProposedOwnershipValid(state, voteType, qty, recipient)) {
+                throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+            }
+
+            if (voteType === 'addBalance') {
+                note = "Add balance of " + String(qty) + " to " + recipient;
+            } else if (voteType === 'addLocked') {
+                note = "Add and Lock a balance of " + String(qty) + " for " + recipient;
+            } else if (voteType === 'subtractBalance') {
+                note = "Subtract balance of " + String(qty) + " for " + recipient;
             } else if (voteType === 'addMember') {
-                note = "Add new member, " + recipient + ", and mint " + String(qty) + " tokens";
+                note = "Add new member, " + recipient + ", with a balance of " + String(qty);
             } else if (voteType === 'removeMember') {
-                note = "Remove member, " + recipient + ", and burn their " + String(qty) + " tokens";
+                note = "Remove member, " + recipient + ", with a balance of " + String(qty);
             }
         } else if (voteType === 'set') {
             // Validate properties
             if (!key || key === '') {
-                ThrowError("Invalid Key.");
+                throw new ContractError("Invalid Key.");
             }
             if (!value || value === '') {
-                ThrowError("Invalid Value.");
+                throw new ContractError("Invalid Value.");
+            }
+
+            const validationResponce = validateProperties(key, value);
+            if (validationResponce !== "") {
+                throw new ContractError(validationResponce);
+            }
+
+            if (key === "owner") {
+                if (!isProposedOwnershipValid(state, voteType, qty, value)) {
+                    throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+                }
             }
 
             // Get current value for key in state
             let currentValue = String(getStateValue(state, key));
-
             note = "Change " + getStateProperty(key) + " from " + currentValue + " to " + String(value);
-        } else if (voteType === 'assetDirective') {
-            // A vote to direct assets
-            /**** THINK ABOUT HOW THIS WOULD WORK */
-            
         } else if (voteType === 'withdrawal') {
             if (!(qty) || !(qty > 0)) {
-                ThrowError("Error in input.  Quantity not supplied or is invalid.");
+                throw new ContractError("Error in input.  Quantity not supplied or is invalid.");
             }
             if (!input.txID) {
-                ThrowError("Error in input.  No Transaction ID found.");
+                throw new ContractError("Error in input.  No Transaction ID found.");
             }
             txID = input.txID;
             if (!target) {
-                ThrowError("Error in input.  Target not supplied.");
+                throw new ContractError("Error in input.  Target not supplied.");
             }
             target = isArweaveAddress(target);
 
+            // Is this qty available for withdrawal?
+            const tokenObj = state.tokens?.find((token) => (token.txID === txID));
+
+            if (tokenObj && tokenObj.balance < qty) {
+                throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
+            }
         } else {
-            ThrowError("Vote Type not supported.");
+            throw new ContractError("Vote Type not supported.");
         }
 
         // Create Vote ID
-        let voteId = String(block) + 'txTEST';
-        // @ts-expect-error
-        if (mode !== 'TEST') {
-            voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
-        }
+        let voteId = String(SmartWeave.block.height) + SmartWeave.transaction.id + String(multiIteration);
+
 
         let vote: VoteInterface = {
             status: 'active',
@@ -330,23 +347,23 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     if (input.function === "vote") {
         const voteId = input.voteId;
         const cast = input.cast;
-        
+
         const vote = votes.find(vote => vote.id === voteId);
 
         if (typeof vote === 'undefined') {
-            ThrowError("Vote does not exist.");
+            throw new ContractError("Vote does not exist.");
         }
 
         // Is caller allowed to vote?  Check votingPower for this vote
         let voterBalance = 0;
 
-        if (state.ownership === 'single' && caller !== state.creator) {
-            ThrowError("Caller is not the owner of the vehicle.");
-        
-        //@ts-expect-error
+        if (state.ownership === 'single' && caller !== state.owner) {
+            throw new ContractError("Caller is not the owner of the repo.");
+
+            //@ts-expect-error
         } else if (!(caller in vote.votingPower)) {
-        //if (!(caller in balances || caller in state.vault)) {
-            ThrowError("Caller isn't a member of the vehicle and therefore isn't allowed to vote.");
+            //if (!(caller in balances || caller in state.vault)) {
+            throw new ContractError("Caller isn't a member of the repo and therefore isn't allowed to vote.");
         } else {
             // Get caller's votingPower
             //@ts-expect-error
@@ -355,21 +372,20 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         // Make sure caller's balance is not zero
         if (voterBalance == 0) {
-            ThrowError("Caller's balance is 0 and therefore isn't allowed to vote.");
+            throw new ContractError("Caller's balance is 0 and therefore isn't allowed to vote.");
         }
 
         // Is vote over?
-        //@ts-expect-error
         if (vote.status !== 'active') {
-            ThrowError("Vote is not active.");
+            throw new ContractError("Vote is not active.");
         }
 
         // Has caller already voted?
         //@ts-expect-error
         if (vote.voted.includes(caller)) {
-            ThrowError("Caller has already voted.");
+            throw new ContractError("Caller has already voted.");
         }
-        
+
         // Record vote
         if (cast === 'yay') {
             //@ts-expect-error
@@ -378,7 +394,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             //@ts-expect-error
             vote.nays += voterBalance;
         } else {
-            ThrowError('Invalid vote cast.');
+            throw new ContractError('Invalid vote cast.');
         }
         //@ts-expect-error
         vote.voted.push(caller);
@@ -392,27 +408,27 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         const targetAddress = isArweaveAddress(target);
 
         if (!Number.isInteger(qty)) {
-            ThrowError('Invalid value for "qty". Must be an integer.');
+            throw new ContractError('Invalid value for "qty". Must be an integer.');
         }
         if (!targetAddress) {
-            ThrowError("No target specified.");
+            throw new ContractError("No target specified.");
         }
         if (qty <= 0 || callerAddress === targetAddress) {
-            ThrowError("Invalid token transfer.");
+            throw new ContractError("Invalid token transfer.");
         }
-        if (!(callerAddress in balances)) {
-            ThrowError("Caller doesn't own a balance in the Vehicle.");
+        if (!balances[callerAddress] || balances[callerAddress] == undefined || balances[callerAddress] == null || isNaN(balances[callerAddress])) {
+            throw new ContractError("Caller doesn't own a balance in the Repo.");
         }
         if (balances[callerAddress] < qty) {
-            ThrowError(`Caller balance not high enough to send ${qty} token(s)!`);
+            throw new ContractError(`Caller balance not high enough to send ${qty} token(s)!`);
         }
         if (SmartWeave.contract.id === target) {
-            ThrowError("A vehicle token cannot be transferred to itself because it would add itself the balances object of the vehicle, thus changing the membership of the vehicle without a vote.");
+            throw new ContractError("A repo token cannot be transferred to itself because it would add itself the balances object of the repo, thus changing the membership of the repo without a vote.");
         }
 
-        // if new qty is <= 0 and the caller is the creator of a single owner vehicle, the transfer is not allowed
-        if ((state.ownership === "single") && (callerAddress === state.creator) && (balances[callerAddress] - qty <= 0)) {
-            ThrowError("Invalid transfer because the creator's balance would be 0.");
+        // if new qty is <= 0 and the caller is the owner of a single owner repo, the transfer is not allowed
+        if ((state.ownership === "single") && (callerAddress === state.owner) && (balances[callerAddress] - qty <= 0)) {
+            throw new ContractError("Invalid transfer because the owner's balance would be 0.");
         }
 
         balances[callerAddress] -= qty;
@@ -423,142 +439,136 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         }
     }
 
-    if (input.function === "withdrawal") {
-        if (!state.tokens) {
-            ThrowError("This vehicle has no tokens.")
-        }
-
-        if (!input.txID) {
-            ThrowError("Missing Transaction ID.");
-        }
-        if (!input.voteId) {
-            ThrowError("Missing Vote ID.")
-        }
-
-        // Is the transaction approved?
-        //@ts-expect-error
-        const tokenIndex = state.tokens.findIndex(token => token.txID === input.txID);
-        if (tokenIndex !== -1) {
-            //@ts-expect-error
-            if (state.tokens[tokenIndex].withdrawals) {
-                //@ts-expect-error
-                const wdIndex = state.tokens[tokenIndex].withdrawals.findIndex( wd => wd.voteId === input.voteId);
-                            
-                if (wdIndex !== -1) {
-                    //@ts-expect-error
-                    let invokeInput = JSON.parse(JSON.stringify(state.tokens[tokenIndex].withdrawals[wdIndex]));
-                    delete invokeInput.voteId;
-                    delete invokeInput.txID;
-                    delete invokeInput.processed;
-
-                    // Add to foreignCalls array just like an invoke in a normal contract would
-                    invoke(state, invokeInput);
-
-                    // Update deposits
-                    //@ts-expect-error
-                    state.tokens[tokenIndex].balance -= invokeInput.invocation.qty;
-
-                    // Remove withdrawals object from the token object
-                    //@ts-expect-error
-                    state.tokens[tokenIndex].withdrawals = state.tokens[tokenIndex].withdrawals.filter( wd => wd.voteId !== input.voteId);
-            }
-            
-            } else {
-                ThrowError("Withdrawal not found.");
-            }
-        } else {
-            ThrowError("Invalid withdrawal transaction.");
-        }
-    }
-
     if (input.function === 'deposit') {
-        // Transfer tokens into vehicle
+        // Transfer tokens into repo
         if (!input.txID) {
-            ThrowError("The transaction is not valid.  Tokens were not transferred to the vehicle.");
+            throw new ContractError("The transaction is not valid.  Tokens were not transferred to the repo.");
         }
-        if(!input.tokenId) {
-            ThrowError("No token supplied. Tokens were not transferred to the vehicle.");
+        if (!input.tokenId) {
+            throw new ContractError("No token supplied. Tokens were not transferred to the repo.");
         }
-        if(input.tokenId === SmartWeave.contract.id) {
-            ThrowError("Deposit not allowed because you can't deposit an asset of itself.");
+        if (input.tokenId === SmartWeave.contract.id) {
+            throw new ContractError("Deposit not allowed because you can't deposit an asset of itself.");
         }
-
-        let lockLength = 0;
-        if (input.lockLength) {
-            lockLength = input.lockLength;
+        if (!input.qty || typeof +input.qty !== "number" || +input.qty <= 0) {
+            throw new ContractError("Qty is invalid.");
         }
 
-        /*** Ensure transfer interaction was valid */
-        const validatedTx = await validateTransfer(input.tokenId, input.txID);
+        let lockLength = input.lockLength ? input.lockLength : 0;
 
+        /*** Call the claim function on the depositing contract */
+        const transferResult = await SmartWeave.contracts.write(input.tokenId, {
+            function: "claim",
+            txID: input.txID,
+            qty: input.qty
+        });
+
+        if (transferResult.type !== "ok") {
+            throw new ContractError("Unable to deposit token " + input.tokenId);
+        }
+
+        // Claimed is ok, so now update the AFTR repo's state token object to reflect the deposit
+        const tokenInfo = await getTokenInfo(transferResult.state);
         const txObj = {
             txID: input.txID,
-            tokenId: validatedTx.tokenId,
+            tokenId: input.tokenId,
             source: caller,
-            balance: validatedTx.qty,
-            start: validatedTx.block,
-            name: validatedTx.name,
-            ticker: validatedTx.ticker,
-            logo: validatedTx.logo,
+            balance: input.qty,
+            start: SmartWeave.block.height,
+            name: tokenInfo.name,
+            ticker: tokenInfo.ticker,
+            logo: tokenInfo.logo,
             lockLength: lockLength
         };
 
         // Add to psts object
         if (!state.tokens) {
-            // tokens array is not in vehicle
+            // tokens array is not in repo
             state['tokens'] = [];
         }
-        
+
         //@ts-expect-error
         state.tokens.push(txObj);
     }
 
-    /*** Begin Foreign Call Protocol (FCP) Implementation */
-    if (input.function === "readOutbox") {
-        // Ensure that a contract ID is passed
-        if (!input.contract) {
-            ThrowError("Missing contract to invoke.");
+    /*** BEGIN CROSS CONTRACT COMMUNICATION SUPPORT */
+
+    if (input.function === "allow") {
+        target = input.target;
+        const quantity = input.qty;
+
+        if (!Number.isInteger(quantity) || quantity === undefined) {
+            throw new ContractError("Invalid value for quantity. Must be an integer.");
         }
-        
-        // Prevent contract from calling itself
-        if (input.contract === SmartWeave.contract.id) {
-            ThrowError("Invalid Foreign Call. A contract cannot invoke itself.");
+        if (!target) {
+            throw new ContractError("No target specified.");
         }
-      
-        // Read the state of the foreign contract
-        const foreignState = await SmartWeave.contracts.readContractState(input.contract);
-      
-        // Check if the foreign contract supports the foreign call protocol and compatible with the call
-        if (!foreignState.foreignCalls) {
-            ThrowError("Contract is missing support for foreign calls.");
+        if (target === SmartWeave.contract.id) {
+            throw new ContractError("Can't setup claim to transfer a balance to itself.");
         }
-      
-        // Get foreign calls for this contract that have not been executed
-        const calls: ForeignCallInterface[] = foreignState.foreignCalls.filter(
-          (element: ForeignCallInterface) =>
-            element.contract === SmartWeave.contract.id &&
-            //@ts-expect-error
-            !state.invocations.includes(element.txID)
-        );
-      
-        // Run all invocations
-        let res = state;
-      
-        for (const entry of calls) {
-          // Run invocation
-          //@ts-expect-error
-          res = (await handle(res, { caller: input.contract, input: entry.input })).state;
-          
-          // Push invocation to executed invocations
-          //@ts-expect-error
-          res.invocations.push(entry.txID);
+        if (quantity <= 0 || caller === target) {
+            throw new ContractError("Invalid balance transfer.");
         }
-      
-        state = res;
+        if (balances[caller] < quantity || !balances[caller] || balances[caller] == undefined || balances[caller] == null || isNaN(balances[caller])) {
+            throw new ContractError("Caller balance not high enough to make a balance of " + quantity + "claimable.");
+        }
+
+        balances[caller] -= quantity;
+
+        state.claimable.push({
+            from: caller,
+            to: target,
+            qty: quantity,
+            txID: SmartWeave.transaction.id,
+        });
     }
 
+    if (input.function === "claim") {
+        // Claim input: txID
+        const txID = input.txID;
+        // Claim qty
+        const qty = input.qty;
 
-    /*** End FCP */
+        if (!state.claimable.length) {
+            throw new ContractError("Contract has no claims available.");
+        }
+        // Search for txID inside of `claimable`
+        let obj, index;
+        for (let i = 0; i < state.claimable.length; i++) {
+            if (state.claimable[i].txID === txID) {
+                index = i;
+                obj = state.claimable[i];
+            }
+        }
+        if (obj === undefined) {
+            throw new ContractError("Unable to find claim.");
+        }
+        if (obj.to !== caller) {
+            throw new ContractError("Claim not addressed to caller.");
+        }
+        if (obj.qty !== qty) {
+            throw new ContractError("Claiming incorrect quantity of tokens.");
+        }
+        // Check to make sure it hasn't been claimed already
+        for (let i = 0; i < state.claims.length; i++) {
+            if (state.claims[i] === txID) {
+                throw new ContractError("This claim has already been made.");
+            }
+        }
+        // Not already claimed --> can claim
+        if (!balances[caller]) {
+            balances[caller] = 0;
+        }
+        balances[caller] += obj.qty;
+
+        // remove from claimable
+        state.claimable.splice(index, 1);
+
+        // add txID to `claims`
+        state.claims.push(txID);
+    }
+
+    /*** END  CROSS CONTRACT COMMUNICATION SUPPORT */
 
     if (input.function === "multiInteraction") {
         /*** A multi-interaction is being called.  
@@ -569,30 +579,30 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         */
 
         if (typeof input.actions === 'undefined') {
-            ThrowError("Invalid Multi-interaction input.");
+            throw new ContractError("Invalid Multi-interaction input.");
         }
 
         const multiActions = input.actions;
-        
+
         if (multiActions.length > multiLimit) {
-            ThrowError("The Multi-interactions call exceeds the maximum number of interations.");
+            throw new ContractError("The Multi-interactions call exceeds the maximum number of interations.");
         }
 
         let iteration = 1;
         let updatedState = state;
 
-        for(let nextAction of multiActions) {
+        for (let nextAction of multiActions) {
             nextAction.input.iteration = iteration;
-            
+
             // Don't allow nested multiActions
             if (nextAction.input.function === 'multiInteraction') {
-                ThrowError("Nested Multi-interactions are not allowed.");
+                throw new ContractError("Nested Multi-interactions are not allowed.");
             }
 
             // Add the caller to the action
             nextAction.caller = caller;
 
-            let result =  await handle(updatedState, nextAction);
+            let result = await handle(updatedState, nextAction);
             //@ts-expect-error
             updatedState = result.state;
 
@@ -604,21 +614,21 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     // Find concluded votes in order to finalize
     /***
      * Look for
-     * voteLength has passed OR single ownership vehicle (no voteLength required)
+     * voteLength has passed OR single ownership repo (no voteLength required)
      * AND status of vote == 'active'
     ***/
 
     if (Array.isArray(votes)) {
         //@ts-expect-error
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === 'active'));        
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));
         if (concludedVotes.length > 0) {
-            finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
+            await finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
         }
     }
 
     if (multiIteration <= 1) {
         // Only handle tips one time
-        // Handle tips to vehicle balance holders
+        // Handle tips to repo balance holders
         /**** TODO */
 
 
@@ -629,7 +639,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
         // Check for any expired loaned tokens
         if (state.tokens) {
-            returnLoanedTokens(state, block);
+            await returnLoanedTokens(state, block);
         }
     }
 
@@ -639,7 +649,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             for (let bal of state.vault[caller]) {
                 vaultBal += bal.balance;
             }
-        } catch(e) {
+        } catch (e) {
             // Vault not iterable
         }
         return { result: { target, balance, vaultBal } };
@@ -652,44 +662,55 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 function isArweaveAddress(addy: string) {
     const address = addy.toString().trim();
     if (!/[a-z0-9_-]{43}/i.test(address)) {
-        ThrowError('Invalid Arweave address.');
+        throw new ContractError('Invalid Arweave address.');
     }
 
     return address;
 }
 
-function scanVault(vehicle, block) {
-    for (const [key, arr] of Object.entries(vehicle.vault)) {
+function scanVault(repo, block) {
+    /*** 
+     * Scans the vault and unlocks any balances that have passed their required lock time. 
+     * When it's time for a balance to be unlocked, the balance is moved from the vault to the balances object.
+    */
+
+    for (const [key, arr] of Object.entries(repo.vault)) {
         // @ts-expect-error
-        for(let i=0; i < arr.length; i++) {
+        for (let i = 0; i < arr.length; i++) {
             //@ts-expect-error
             if (arr[i].end <= block) {
                 // Transfer balance
-                if (key in vehicle.balances) {
+                if (key in repo.balances) {
                     //@ts-expect-error
-                    vehicle.balances[key] += arr[i].balance;
+                    repo.balances[key] += arr[i].balance;
                 } else {
                     //@ts-expect-error
-                    vehicle.balances[key] = arr[i].balance;
+                    repo.balances[key] = arr[i].balance;
                 }
-    
+
                 // Remove object
-                vehicle.vault[key].splice(i, 1);
+                repo.vault[key].splice(i, 1);
                 i--;
             }
             // Clean up empty objects
-            if (vehicle.vault[key].length == 0) {
-                delete vehicle.vault[key];
+            if (repo.vault[key].length == 0) {
+                delete repo.vault[key];
             }
         }
     }
 }
 
-function returnLoanedTokens(vehicle, block) {
+async function returnLoanedTokens(repo, block) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
-    if (Array.isArray(vehicle.tokens)) {
-        const unlockedTokens = vehicle.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength <= block));
-        unlockedTokens.forEach(token => processWithdrawal(vehicle, token));
+    if (Array.isArray(repo.tokens)) {
+        const unlockedTokens = repo.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength <= block));
+        for (let token of unlockedTokens) {
+            const wdResult = await SmartWeave.contracts.write(token.tokenId, {
+                function: "transfer",
+                target: token.source,
+                qty: token.balance
+            });
+        }
     }
 }
 
@@ -701,82 +722,49 @@ function getStateProperty(key: string) {
     return key;
 }
 
-function getStateValue(vehicle: StateInterface, key) {
-    const settings: Map<string, any> = new Map(vehicle.settings);
+function getStateValue(repo: StateInterface, key) {
+    const settings: Map<string, any> = new Map(repo.settings);
     let value = '';
 
     if (key.substring(0, 9) === 'settings.') {
         let setting = key.substring(9);
         value = settings.get(setting);
     } else {
-        value = vehicle[key];
+        value = repo[key];
     }
     return value;
 }
+function validateProperties(key: string, value: any) {
+    let response = "";
 
-function processWithdrawal(vehicle, tokenObj) {
-    // Utilize the Foreign Call Protocol to return tokens to orginal source
-    /**** FOREIGN CALL PROTOCOL to call transfer function on token's smart contract */
-
-
-    // Update state by finding txID if Withdrawal was successful
-    if (Array.isArray(vehicle.tokens)) {
-        vehicle.tokens = vehicle.tokens.filter(token => token.txID !== tokenObj.txID);
+    // Validate Quorum and Support
+    if (key === "settings.quorum" && (value < 0 || value > 1)) {
+        response = "Quorum must be between 0 and 1.";
     }
+    if (key === "settings.support" && (value < 0 || value > 1)) {
+        response = "Support must be between 0 and 1."
+    }
+
+    // Make sure that owner is a valid value
+    if (key === "owner" && !/[a-z0-9_-]{43}/i.test(value)) {
+        response = "Proposed owner is invalid."
+    }
+
+    return response;
 }
 
-function invoke(state, input) {
-    /****
-     * There is no invoke condition in an AFTR Vehicle b/c votes have to be passed in order to transfer tokens out of a vehicle.
-     * So, this function must be called from within the AFTR Vehicle.
-     */
-
-    // Ensure that the interaction has an invocation object
-    if (!input.invocation) {
-        ThrowError("Missing function invocation.");
-    }
-
-    if (!input.invocation.function) {
-        ThrowError("Invalid invocation.");
-    }
-    
-    // Ensure that the interaction has a foreign contract ID
-    if (!input.foreignContract) {
-        ThrowError("Missing Foreign Contract ID.");
-    }
-
-    if (typeof input.foreignContract !== 'string') {
-        ThrowError("Invalid Foreign Contract ID.");
-    }
-    
-    if (typeof input.foreignContract !== 'string') {
-        ThrowError("Invalid input.");
-    }
-
-    // Prevent contract from calling itself
-    if (input.foreignContract === SmartWeave.contract.id) {
-        ThrowError("A Foreign Call cannot call itself.");
-    }
-
-    // Push call to foreignCalls
-    state.foreignCalls.push({
-        txID: SmartWeave.transaction.id,
-        contract: input.foreignContract,
-        input: input.invocation
-    });
-}
-
-function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
+async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
     // Loop thru all concluded votes
-    concludedVotes.forEach( vote => {
+    // concludedVotes.forEach( vote => {
+    for (let vote of concludedVotes) {
         let finalQuorum = 0.0;
         let finalSupport = 0.0;
 
         // If single owned or total support has been met, pass vote (voteLength doesn't matter)
-        if (vehicle.ownership === 'single' || vote.yays / vote.totalWeight > support) {
-                vote.statusNote = vehicle.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
-                vote.status = 'passed';
-                modifyVehicle(vehicle, vote);
+        if (repo.ownership === 'single' || vote.yays / vote.totalWeight > support) {
+            vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
+            vote.status = 'passed';
+            await modifyRepo(repo, vote);
         } else if (vote.nays / vote.totalWeight > support) {
             vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
             vote.status = "failed";
@@ -792,7 +780,7 @@ function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
                 finalSupport = vote.yays / (vote.yays + vote.nays);
                 vote.status = 'passed';
                 vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
-                modifyVehicle(vehicle, vote);
+                await modifyRepo(repo, vote);
             }
         } else {
             // Vote failed
@@ -801,78 +789,76 @@ function finalizeVotes(vehicle, concludedVotes, quorum, support, block) {
             finalSupport = vote.yays / (vote.yays + vote.nays);
             vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
         }
-    });
+    };
 }
 
-function modifyVehicle(vehicle, vote) {
-    if (vote.type === 'mint' || vote.type === 'addMember') {
-        if (vote.recipient in vehicle.balances) {
-            // Wallet already exists in state, add tokens
-            vehicle.balances[vote.recipient] += vote.qty;
+async function modifyRepo(repo, vote) {
+    if (vote.type === 'addBalance' || vote.type === 'addMember') {
+        if (vote.recipient in repo.balances) {
+            // Wallet already exists in state, add balance
+            repo.balances[vote.recipient] += vote.qty;
         } else {
             // Wallet is new
-            vehicle.balances[vote.recipient] = vote.qty;
+            repo.balances[vote.recipient] = vote.qty;
         }
-    } else if (vote.type === 'mintLocked') {
+    } else if (vote.type === 'addLocked') {
         let vaultObj = {
             balance: vote.qty,
             start: vote.start,
             end: vote.start + vote.lockLength
         }
-        if (vote.recipient in vehicle.vault) {
+        if (vote.recipient in repo.vault) {
             // Add to existing
-            vehicle.vault[vote.recipient].push(vaultObj);
+            repo.vault[vote.recipient].push(vaultObj);
         } else {
             // Add new
-            vehicle.vault[vote.recipient] = [ vaultObj ];
+            repo.vault[vote.recipient] = [vaultObj];
         }
-    } else if (vote.type === 'burn') {
-        vehicle.balances[vote.recipient] -= vote.qty;
+    } else if (vote.type === 'subtractBalance') {
+        if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
+            throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+        }
+        repo.balances[vote.recipient] -= vote.qty;
     } else if (vote.type === 'removeMember') {
-        delete vehicle.balances[vote.recipient];
+        if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
+            throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+        }
+        delete repo.balances[vote.recipient];
     } else if (vote.type === 'set') {
         if (vote.key.substring(0, 9) === 'settings.') {
             // key is a setting
             let key = getStateProperty(vote.key);
-            updateSetting(vehicle, key, vote.value);
+            updateSetting(repo, key, vote.value);
         } else {
-            vehicle[vote.key] = vote.value;
+            if (vote.key === "owner" && !isProposedOwnershipValid(repo, vote.type, vote.qty, vote.value)) {
+                throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
+            }
+            repo[vote.key] = vote.value;
         }
+    } else if (vote.type === 'evolve') {
+        repo.evolve = vote.value;
     } else if (vote.type === 'withdrawal') {
         // Find the token object that is to be w/d
-        const tokenObj = vehicle.tokens.find( (token) => (token.txID === vote.txID) );
-        let input = {
-            function: "withdrawal",
-            foreignContract: tokenObj.tokenId,
-            invocation: {
-                function: "transfer",
-                target: vote.target,
-                qty: vote.qty
-            }
-        };
-        if (vehicle.ownership === "single") {
-            // Vehicle can change now, proceed with FCP by calling invoke immediately
-            invoke(vehicle, input);
+        const tokenObj = repo.tokens.find((token) => (token.txID === vote.txID));
+        const contractId = tokenObj.tokenId;
+        const wdResult = await SmartWeave.contracts.write(contractId, {
+            function: "transfer",
+            target: vote.target,
+            qty: vote.qty
+        });
 
-            // Update deposits
-            /*** Is there a way to validate this amount at a later time if the transfer fails? */
-            tokenObj.balance -= vote.qty;
-        } else {
-            // Votes will be required to process the withdrawal, so add to the withdrawals array of the token object until the vote is passed
-            input["voteId"] = vote.id;
-            input["processed"] = false;
-            input["txID"] = vote.txID;
-            if (!tokenObj.withdrawals) {
-                tokenObj["withdrawals"] = [];
-            }
-            tokenObj.withdrawals.push(input);
+        if (wdResult.type !== "ok") {
+            throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
         }
+
+        // Update tokens object to reflect w/d
+        tokenObj.balance -= vote.qty;
     }
 }
 
-function updateSetting(vehicle, key, value) {
+function updateSetting(repo, key, value) {
     let found = false;
-    for (let setting of vehicle.settings) {
+    for (let setting of repo.settings) {
         if (setting[0] === key) {
             // Found, so update existing setting
             setting[1] = value;
@@ -882,72 +868,68 @@ function updateSetting(vehicle, key, value) {
     }
     if (!found) {
         // Not found, so add new setting
-        vehicle.settings.push([key, value]);
+        repo.settings.push([key, value]);
     }
 }
 
-async function validateTransfer(tokenId: string, transferTx: string) {
-    /*** Thanks to @martonlederer for the function */
-
-    // First, make sure interaction occurred
-    const tokenInfo = await ensureValidInteraction(tokenId, transferTx);
-
-    // Read the transaction
-    const tx = await SmartWeave.unsafeClient.transactions.get(transferTx);
-
-    let txObj = {
-        tokenId: tokenId,
-        qty: 0,
-        block: SmartWeave.block.height,
-        name: tokenInfo.name,
-        ticker: tokenInfo.ticker,
-        logo: tokenInfo.logo
-    };
-    try {
-        tx.get("tags").forEach((tag) => {
-            if (tag.get("name", { decode: true, string: true }) === "Input") {
-                const input = JSON.parse(tag.get("value", { decode: true, string: true }));
-
-                // Check if the interaction is a transfer
-                if (input.function !== "transfer") {
-                    ThrowError("The interaction is not a transfer.");
-                }
-
-                // Make sure that the target of the transfer transaction is THIS contract
-                if (input.target !== SmartWeave.transaction.tags.find(({ name }) => name === "Contract").value) {
-                    ThrowError("The target of this transfer is not this contract.");
-                }
-
-                txObj.qty = input.qty;
-            }
-        });
-    } catch (err) {
-        //throw new ThrowError("Error validating tags during 'deposit'.  " + err);
-        ThrowError("Error validating tags during 'deposit'.  " + err);
-        //ThrowError("TAGS: " + JSON.stringify(SmartWeave.transaction.tags));
-    }
-
-    return txObj;
-}
-
-async function ensureValidInteraction(contractId: string, interactionId: string) {
-    const contractInteractions = await SmartWeave.contracts.readContractState(contractId, undefined, true);
-
-    // Make sure interaction exists
-    if (!(interactionId in contractInteractions.validity)) {
-        ThrowError("The interaction is not associated with this contract.");
-    }
-
-    // Make sure the transfer was valid
-    if (!contractInteractions.validity[interactionId]) {
-        ThrowError("The interaction was invalid.");
-    }
-
-    const settings: Map<string, any> = new Map(contractInteractions.state.settings);
+async function getTokenInfo(assetState: object) {
+    //@ts-expect-error
+    const settings: Map<string, any> = new Map(assetState.settings);
 
     return {
-        name: contractInteractions.state.name,
-        ticker: contractInteractions.state.ticker,
+        //@ts-expect-error
+        name: assetState.name,
+        //@ts-expect-error
+        ticker: assetState.ticker,
         logo: settings.get("communityLogo")
     };
+}
+
+function isProposedOwnershipValid(repo: StateInterface, proposalType: string, qty: number, member: string) {
+    let valid = true;
+    if (proposalType === "subtractBalance" && !Number.isInteger(qty)) {
+        valid = false;
+    }
+
+    if (proposalType === "removeMember") {
+        if (repo.ownership === "single" && repo.owner === member) {
+            valid = false;
+        } else if (repo.ownership === "multi") {
+            // Loop through proposed balances and determine is anyone will have a balance left
+            let newBalances = JSON.parse(JSON.stringify(repo.balances));
+            delete newBalances[member];
+
+            for (let addr in newBalances) {
+                if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
+                    valid = true;
+                    break;
+                } else {
+                    valid = false;
+                }
+            }
+        }
+    } else if (proposalType === "subtractBalance") {
+        if (repo.ownership === "single" && repo.owner === member && repo.balances[member] - qty < 1) {
+            valid = false;
+        }
+        if (repo.ownership === "multi") {
+            // Loop through proposed balances and determine is anyone will have a balance left
+            let newBalances = JSON.parse(JSON.stringify(repo.balances));
+            newBalances[member] -= qty;
+
+            for (let addr in newBalances) {
+                if (newBalances[addr] > 0 && Number.isInteger(newBalances[addr])) {
+                    valid = true;
+                    break;
+                } else {
+                    valid = false;
+                }
+            }
+        }
+    } else if (proposalType === "set") {
+        if (repo.ownership === "single" && (repo.balances[member] < 1 || !repo.balances[member])) {
+            valid = false;
+        }
+    }
+    return valid;
 }

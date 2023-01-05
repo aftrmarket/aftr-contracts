@@ -105,7 +105,7 @@ async function createVehicle() {
             ""
           ]
         ],
-        "creator": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
+        "owner": "ewTkY6Mytg6C0AtYU6QlkEg1oH-9J2PPS0CM83RL9rk",
         "lockPeriod": 0,
         "ownership": "single",
         "votingSystem": "equal",

@@ -1,6 +1,6 @@
 # The AFTR Protocol Contract
 
-The AFTR state follows common practices established by early SmartWeave contracts such as CommunityXYZ. We call treasuries created using the protocol, AFTR vehicles. A vehicle's state is as follows:
+The AFTR state follows common practices established by early SmartWeave contracts such as CommunityXYZ. We call groups of assets or treasuries created using the protocol, AFTR repos. A repo's state is as follows:
 
 ```typescript
 {
@@ -9,35 +9,32 @@ The AFTR state follows common practices established by early SmartWeave contract
     balances: {
         [addr: string]: number,                     
     },
-    creator: string,                                // Wallet of creator of vehicle
-    seats?: number,                                 // Number of available seats in vehicle
-    ownership: 'single' | 'dao',                    // Owned by a single wallet or a DAO
-    votingSystem: 'equal' | 'weighted',            // Member votes count equally or weighted based on token balance
-    status: 'stopped' | 'started' | 'expired',      // Vehicle status can be stopped, started, or expired (lock period has expired without being renewed)
+    owner: string,                                // Wallet of owner of repo
+    ownership: 'single' | 'multi',                   // Owned by a single wallet or multiple owners
+    votingSystem: 'equal' | 'weighted',             // Member votes count equally or weighted based on token balance
+    status: 'stopped' | 'started' | 'expired',      // Repo status can be stopped, started, or expired (lock period has expired without being renewed) - CURRENTLY NOT USED
     vault: {                                        // Locked member tokens
         [key: string]: [{
-            balance: number,    // Positive integer
-            end: number,        // At what block the lock ends.
-            start: number       // At what block the lock starts.
+            balance: number,                        // Positive integer
+            end: number,                            // At what block the lock ends.
+            start: number                           // At what block the lock starts.
         }]
     },
     votes: VoteInterface[],
-    invocations: string[],                          // Required for Foreign Call Protocol (FCP)
-    foreignCalls: {                                 // Required for Foreign Call Protocol (FCP)
-        contract: string,
-        input: InputInterface
-    }[],
-    tokens?: [                                      // Tokens stored in vehicle
+    tokens?: [                                      // Assets stored in repo
         TokenInterface,
     ],
+    claimable: ClaimableInterface[],                // Required for Internal Writes
+    claims: string[],                               // Required for Internal Writes
+    evolve?: string,
     settings: Map<string, any>
 }
 ```
 ## Settings
-AFTR vehicles use the standard settings in SmartWeave contracts. Here are some of the standard ones:
+AFTR repos use the standard settings in SmartWeave contracts. Here are some of the standard ones:
 
 ```typescript
-  settings: [   // Array of a Map<string, any>
+  settings: [                               // Array of a Map<string, any>
       ["quorum", number],                   // quorum is between 0.01 and 0.99
       ["support", number],                  // Between 0.01-0.99, how much % yays for a proposal to be approved
       ["voteLength", number],               // How many blocks to leave a proposal open
@@ -46,8 +43,7 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
       ["communityAppUrl", string],
       ["communityDiscussionLinks", string],
       ["communityDescription", string],
-      ["communityLogo", string],
-      ["evolve", string]
+      ["communityLogo", string]
   ]
 ```
 
@@ -57,7 +53,7 @@ AFTR vehicles use the standard settings in SmartWeave contracts. Here are some o
 ### Input Interface
 ```typescript
 InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'multiInteraction';
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'multiInteraction' | 'allow' | 'claim';
     type?: string;
     recipient?: string;
     target?: string;
@@ -73,15 +69,12 @@ InputInterface {
 ### Token Interface
 ```typescript
 TokenInterface {
-    txId: string,
+    txID: string,
     tokenId: string,
-    name: string,
-    ticker: string,
-    logo: string,
     source: string,
     balance: number,
     start: number,          // Stamp when added
-    lockLength?: number,    // Tokens can be loaned to a vehicle. A 0 value indicates no loan.
+    lockLength?: number,    // Tokens can be loaned to a repo. A 0 or undefined value indicates no loan.
 }
 ```
 
@@ -92,7 +85,7 @@ The VoteInterface is similar to the vote interface in CommunityXYZ with a few ad
 VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective';
+    type?: 'addBalance' | 'subtractBalance' | 'set' | 'addMember' | 'addLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -108,32 +101,55 @@ VoteInterface {
     nays?: number;
     voted?: string[];
     start?: number;
-    voteLength?: number;    // Length of vote must be stored inside vote in case the settings.voteLength changes
-    lockLength?: number;    // Length of blocks when minting locked tokens
-    txID?: string;          // Used during withdrawal for validation
+    voteLength?: number;        // Length of vote must be stored inside vote in case the settings.voteLength changes
+    lockLength?: number;        // Length of blocks when minting locked tokens
+    txID?: string;              // Used during withdrawal for validation
   }
 ```
 
-All changes to the vehicle state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the vehicle is owned by a single member or a DAO. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is DAO, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the vehicle.
+All changes to the repo state with the exception of deposits are handled through the voting functions. When a vote is proposed, the contract checks to see if the repo is owned by single or multiple members. If the ownership is single, then the vote processes immediately without requiring passed votes. If the ownership is multiple, then the contract using the voting system settings (votingSystem, voteLength, and quorum) to process the vote. If the vote passes, then the contract makes the proposed change to the repo.
 
-### Contract Interaction Interface
+**Vote Types**
+- addBalance - A vote to add voting power to a member's balance.
+- subtractBalance - A vote to subtract voting power from a member's balance.
+- set - A vote to set or add a state property or setting.
+- addMember - A vote to add a member to the repo with a balance of the specifide quantity.
+- addLocked - A vote to add a locked balance for a member of the repo (i.e. adding a member balance to the vault).
+- removeMember - A vote to remove a member of the repo, thus removing all their voting power.
+- withdrawal - A vote to withdrawal assets from the repo and transfer them to another wallet. This removes the balance from the repo's token object and transfers the balance from the repo to the wallet inside the asset's contract.
+- externalInteraction - A vote to send an interaction to another contract.
+- evolve - A vote to evolve the contract to a new source. Expects a new contract source ID in the value property.
+
+### ClaimableInterface
+The ClaimableInterface is used when an Allow interaction is called. When an Allow interaction is called on a repo, a Claimable object is pushed onto the Claimable array telling the repo that another contract will come to claim these tokens in the object.
 ```typescript
-ContractInteractionInterface {
-    function: 'invoke';
-    foreignContract: string;
-    invocation: InputInterface
-}
+ClaimableInterface {
+    from: string;
+    to: string;
+    qty: number;
+    txID: string;
+  }
 ```
-For more information on the Foreign Call Protocol (FCP), see the [FCP Spec](https://www.notion.so/Foreign-Call-Protocol-Specification-61e221e5118a40b980fcaade35a2a718).
 
 ## Functions in the AFTR Smart Contract
 
+### Evolve
+The evolve function allows the repo to be updated to a new source contract. 
+```typescript
+const evolveAction = {
+    input: {
+        function: 'evolve',
+        value: '<NEW-CONTRACT-SOURCE-ID>',
+    }
+};
+```
+
 ### Balance
-The balance function is used to view a balance of a vehicle member. If a target is not supplied in the input, then the balance of the caller is returned.
+The balance function is used to view a balance of a repo member. If a target is not supplied in the input, then the balance of the caller is returned.
 
 The return value is an object containing the target, balance, and locked balance.
 ```json
-{ "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8", 10000, 1000 }
+{ "result": { "target": "abd7DMW1A8-XiGUVn5qxHLseNhkJ5C1Cxjjbj6XC3M8", "balance": 10000, "vaultBal": 1000 } }
 ```
 
 #### Sample Balance Action
@@ -160,26 +176,31 @@ const txAction = {
 };
 ```
 
-### Deposit
-The deposit function transfers Arweave assets into the vehicle. The caller must supply the Token ID and Transaction ID in order for the AFTR contract to verify the token transfer. Once verified, the vehicle state is updated to show the assets in the token array of objects.
 
-#### Sample Deposit Action
-```typescript
-const depAction = {
-    input: {
-        function: 'deposit',
-        tokenId: 'ggDeF2IFS7mcun_utV-e6ZY9SNu1UhhWuvo7zNbUhRg',
-        txId: 'BoRZeKy5kudTtI1TS2CMri8XNC4MPqMnBkCm2BV9i4F'
-    }
+### Deposit
+The deposit function transfers Arweave assets into the repo. In order to do this, 2 interactions must be called on 2 contracts:
+- First, a claim must be setup on the the asset being deposited into the repo.  To do this, you must call the allow function on the asset and your wallet must own the number of assets being deposited:
+```javascript
+const inputAllow = {
+    function: "allow",
+    target: "<VEHICLE CONTRACT ID>"",
+    qty: quantity
 };
+const allowTxId = await warpWrite(assetId, inputAllow);  // warpWrite is a function that calls the writeInteraction function in Warp
+```
+- Next, you call the deposit interaction on the repo using the transaction ID of the claim.  When the interaction runs, the AFTR repo internally writes to the deposited asset contract claiming the transaction that was setup in the previous interaction.
+```javascript
+const inputDep = {
+    function: "deposit",
+    tokenId: assetId,
+    qty: quantity,
+    txID: allowTxId // TX ID from the first interaction
+};
+const allowDepId = await warpWrite(repoId, inputDep);
 ```
 
 ### Withdrawal
-The withdrawal function utilizes the [Foreign Call Protocol (FCP)](https://www.notion.so/Foreign-Call-Protocol-Specification-61e221e5118a40b980fcaade35a2a718) to transfers tokens out of the vehicle. Arweave PSTs or assets must support the FCP in order for this to work.
-
-In an AFTR Contract, a withdrawal is proposed and then the vehicle contract determines when to process the withdrawal based on a successful vote result (If the vehicle is a single owner vehicle, the vote is passed immediately).  Once a withdrawal vote is passed, then the AFTR contract calls an invoke function within the contract to initiate the invoke stage of the FCP.
-
-Next, another interaction needs to be sent to the AFTR contract to read its outbox object to complete the 2nd stage of the FCP.
+In an AFTR Contract, a withdrawal is proposed and then the repo contract determines when to process the withdrawal based on a successful vote result (If the repo is a single owner repo, the vote is passed immediately).  Once a withdrawal vote is passed, the repo contract calls the transfer function on the withdrawn asset's contract using an internal write.  Once that interaction completes successfully, the repo contract then subtracts the withdrawn balance from the token object in the repo.
 
 #### Sample Withdrawal Action
 ```typescript
@@ -193,17 +214,10 @@ const wdAction = {
         note: "<DESCRIPTION OF WITHDRAWAL>"
     }
 };
-
-const readOutboxAction = {
-    input: {
-        function: "readOutbox",
-        contract: "<AFTR VEHICLE CONTRACT ID>"
-    }
-};
 ```
 
 ### Propose
-The propose function is how most changes to the vehicle are proposed. For single ownership vehicles, changes are sent to the contract as proposals, but then the proposals are passed during the next contract read event. By implementing changes to single ownership and DAO ownership vehicles the same way, consistency is maintained.
+The propose function is how most changes to the repo are proposed. For single ownership repos, changes are sent to the contract as proposals, but then the proposals are passed during the next contract read event. By implementing changes to single and multiple owned repos the same way, consistency is maintained.
 
 When a proposal is submitted, the contract adds an VoteInterface object to the votes array in the state.  An unique ID is created using the block concatenated with the SmartWeave Transaction ID.
 
@@ -236,10 +250,10 @@ const voteCastAction = {
 ## Multi-Interaction
 
 Multi-interactions allows multiple contract actions to be bundled together in one call to the handle function in the AFTR contract. By setting the input function to 'multiInteraction' and adding an actions array containing all the specific calls separately, the contract will process each of those calls recursively. Please note the folowing regarding multi-interaction calls:
-- Multiple changes to the vehicle can be processed in one call.
+- Multiple changes to the repo can be processed in one call.
 - Tips, token unlocking, and returning loaned tokens are handled only once in the first iteration of the multi-interaction.
 - The contract limits the number of actions inside of a multi-interaction to 1000, which should be more than enough.
-- If a multi-interaction is called from a DAO owned vehicle, then the number of proposed votes will be equal to the number of actions bundled into the call.
+- If a multi-interaction is called from a multi-owned repo, then the number of proposed votes will be equal to the number of actions bundled into the call.
 
 ### Sample Multi-Interaction Action
 ```typescript

@@ -4,19 +4,11 @@ export interface StateInterface {
     balances: {
         [addr: string]: number;                 // lessee wallet addr: number of seats leased
     };
-    creator: string;                            // Wallet of creator of vehicle
-    seats?: number;                             // Number of available seats in vehicle
-    lockPeriod?: number;                        // Period of time in blocks that vehicle runs (lockPeriod can be renewed)
-    pricePerSeat?: number;                      // Price per seat is customizable
-    minLength?: number;                         // Minimum amount of blocks required to lease a seat
-    maxLength?: number;                         // Maximum amount of blocks required to lease a seat (maximum can't exceed lockPeriod)
-    ownership: 'single' | 'dao' | 'dmm';
+    owner: string;                            // Wallet of owner of repo
+    ownership: 'single' | 'multi';
     votingSystem: 'equal' | 'weighted';        // Member votes count equally or weighted based on token balance
-    status: 'stopped' | 'started' | 'expired';  // Vehicle status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
-    tipsAr?: number;
-    tipsMisc?: number;
-    treasury?: number;
-    ///dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM) - FUTURE ADD
+    status: 'stopped' | 'started' | 'expired';  // Current not used.  Repo status can be stopped (not accepting leases), started (running), or expired (lock period has expired without being renewed)
+    ///dmm?: DmmInterface | {};                    // Supports members being added using Demand Modulated Model (DMM) - POTENTIAL FUTURE ADD
     vault: {
         [key: string]: [{
             balance: number, // Positive integer
@@ -35,9 +27,10 @@ export interface StateInterface {
                 end: number,                              // Leased seat end time in blocks
             }
         ],
-    },
-    invocations: string[] | [],                     // Required for Foreign Call Protocol (FCP)
-    foreignCalls: ForeignCallInterface[] | [],      // Required for Foreign Call Protocol (FCP)
+    },    
+    claimable: ClaimableInterface[],                // Required for supporting Internal Writes
+    claims: string[],                               // Required for supporting Internal Writes
+    evolve?: string,
     settings: Map<string, any>
 }
 
@@ -54,7 +47,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'withdrawal' | 'readOutbox' | 'multiInteraction',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve',
     type?: string,
     recipient?: string,
     target?: string,
@@ -64,22 +57,18 @@ export interface InputInterface {
     note?: string,
     actions?: InputInterface[]
 }
-
+/*
 export interface TransferInterface {
     function: 'transfer',
     target: string,
     qty: number,
 }
-
+*/
 export interface DepositInterface {
     function: 'deposit',
     txID: string,
-    //*** The following information is to confirm the tx */
-    source?: string,
-    depositBlock?: number,
-    tokenId?: string,
-    target?: string,
-    qty?: number,
+    tokenId: string,
+    qty: number,
     lockLength?: number,
 }
 
@@ -88,15 +77,14 @@ export interface TokenInterface {
     tokenId: string,
     source: string,
     balance: number,
-    start: number,   // Stamp when added
-    lockLength?: number,    // Planning for temporary loaning of tokens to a vehicle
-    withdrawals?: [],       // Array of transfer objects
+    start: number,          // Stamp when added
+    lockLength?: number,    // Planning for temporary loaning of tokens to a repo
 }
 
 export interface VoteInterface {
     status?: 'active' | 'quorumFailed' | 'passed' | 'failed';
     statusNote?: string;
-    type?: 'mint' | 'burn' | 'indicative' | 'set' | 'addMember' | 'mintLocked' | 'removeMember' | 'assetDirective' | 'withdrawal';
+    type?: 'addBalance' | 'subractBalance' | 'indicative' | 'set' | 'addMember' | 'incLocked' | 'removeMember' | 'withdrawal' | 'externalInteraction' | 'evolve';
     id?: string;
     totalWeight?: number;
     recipient?: string;
@@ -106,19 +94,20 @@ export interface VoteInterface {
     value?: any;
     note?: string;
     votingPower?: {
-        [addr: string]: number      // Saved snapshot of voting power during a given vote
+        [addr: string]: number  // Saved snapshot of voting power during a given vote
     };
     yays?: number;
     nays?: number;
     voted?: string[];
     start?: number;
-    voteLength?: number;    // Length of vote must be stored inside vote in case the settings.voteLength changes
-    lockLength?: number;    // Length of blocks when minting locked tokens
-    txID?: string;
+    voteLength?: number;        // Length of vote must be stored inside vote in case the settings.voteLength changes
+    lockLength?: number;        // Length of blocks when incing locked tokens
+    txID?: string;              // Used during withdrawal for validation
   }
 
-  export interface ForeignCallInterface {
-    txID: string,
-    contract: string,
-    input: InputInterface
+  export interface ClaimableInterface {
+    from: string;
+    to: string;
+    qty: number;
+    txID: string;
   }

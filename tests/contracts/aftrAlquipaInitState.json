@@ -6,8 +6,8 @@
         "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I": 10000,
         "OI_wj-AISEWopcnlzPIpvN9Wd_KGvUlIRZ-2c5jT_OE": 25000
     },
-    "invocations": [],
-    "foreignCalls": [],
+    "claimable": [],
+    "claims": [],
     "tokens": [
         {
             "tokenId": "usjm4PCxUd5mtaon7zc97-dt-3qf67yPyqgzLnLqk5A",
@@ -48,9 +48,10 @@
     "status": "stopped",
     "tipsAr": 0,
     "tipsMisc": 0,
-    "creator": "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw",
+    "owner": "9h1TtwLLt0gZzvtxZAyzWaAsKze9ni71TYqkIfZ4Mgw",
     "ownership": "single",
     "votingSystem": "weighted",
+    "evolve": "",
     "settings": [
         [
             "quorum",

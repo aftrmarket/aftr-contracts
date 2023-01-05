@@ -44,7 +44,7 @@
     "status": "started",
     "tipsAr": 100,
     "tipsMisc": 1000,
-    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "owner" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
     "ownership" : "single",
     "settings": [
         [
@@ -119,7 +119,7 @@
     "status": "stopped",
     "tipsAr": 0,
     "tipsMisc": 0,
-    "creator" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
+    "owner" : "Fof_-BNkZN_nQp0VsD_A9iGb-Y4zOeFKHA8_GK2ZZ-I",
     "ownership" : "single",
     "settings": [
         [
@@ -196,7 +196,7 @@
     "status": "started",
     "tipsAr": 235,
     "tipsMisc": 2549,
-    "creator" : "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw",
+    "owner" : "j12D8FZU-EBbIdCSkx6vO2shHlqbv5-5Ufl4jOuzGQw",
     "ownership" : "single",
     "settings": [
         [

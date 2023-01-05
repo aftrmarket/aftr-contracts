@@ -623,7 +623,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (Array.isArray(votes)) {
         //@ts-expect-error
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support")) && vote.status === 'active'));        
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));        
         if (concludedVotes.length > 0) {
             await finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
         }

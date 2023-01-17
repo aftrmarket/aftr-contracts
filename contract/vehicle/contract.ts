@@ -399,6 +399,19 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         //@ts-expect-error
         vote.voted.push(caller);
     }
+
+    if (input.function === "finalize") {
+        /***
+         * The purpose of this function is to provide an interaction that can be used so that finalize functions of the contract can be run.
+         * For example, if a vote runs the entire vote length on a multiply owned repo, an interaction is required to finalize the vote and update the state.
+         * This function allows for that interaction.  Not that, nothing is done; this function simply provides a way for callers to run the finalize functions
+         * of the contract.
+         *  */
+        if (state.ownership !== "multi") {
+            // Only allow multiply owned repos to call this function
+            throw new ContractError('Only multi-owned repos can use the finalize function.');
+        }
+    }
     /******* END VOTING FUNCTIONS */
 
     if (input.function === "transfer") {
@@ -755,7 +768,6 @@ function validateProperties(key: string, value: any) {
 
 async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
     // Loop thru all concluded votes
-    // concludedVotes.forEach( vote => {
     for (let vote of concludedVotes) {
         let finalQuorum = 0.0;
         let finalSupport = 0.0;
@@ -764,7 +776,7 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
         if (repo.ownership === 'single' || vote.yays / vote.totalWeight > support) {
             vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
             vote.status = 'passed';
-            await modifyRepo(repo, vote);
+            await modifyRepo(repo, vote); 
         } else if (vote.nays / vote.totalWeight > support) {
             vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
             vote.status = "failed";
@@ -774,13 +786,18 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
             if (vote.totalWeight * quorum > vote.yays + vote.nays) {
                 // Must pass quorum
                 vote.status = 'quorumFailed';
-                vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum);
+                vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum) + ".";
             } else if (vote.yays / (vote.yays + vote.nays) > support) {
                 // Must pass support
                 finalSupport = vote.yays / (vote.yays + vote.nays);
                 vote.status = 'passed';
                 vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
                 await modifyRepo(repo, vote);
+            } else {
+              // Vote failed on support
+              vote.status = 'failed';
+              finalSupport = vote.yays / (vote.yays + vote.nays);
+              vote.statusNote = "The proposal failed due to lack of support. The proposal's support was " + String(finalSupport) + ".";
             }
         } else {
             // Vote failed
@@ -789,7 +806,7 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
             finalSupport = vote.yays / (vote.yays + vote.nays);
             vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
         }
-    };
+    }
 }
 
 async function modifyRepo(repo, vote) {

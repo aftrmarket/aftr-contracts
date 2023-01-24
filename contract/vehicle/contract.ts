@@ -1,3 +1,4 @@
+import Token from "@verto/js/dist/common/token";
 import { StateInterface, ActionInterface, BalanceInterface, InputInterface, VoteInterface } from "./faces";
 
 declare const ContractError: any;
@@ -84,7 +85,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         if (!(caller in balances) || !(balances[caller] > 0)) {
             // Not in balances, now check vault
             let totalBalance = 0;
+            //@ts-expect-error
             if (state.vault[caller]) {
+                //@ts-expect-error
                 for (let bal of state.vault[caller]) {
                     totalBalance += bal.balance;
                 }
@@ -129,6 +132,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
                 if (!(addr in votingPower)) {
                     // Make sure a new address isn't in the vault and if it is, that its balance isn't 0
                     let totalLockedBalance = 0;
+                    //@ts-expect-error
                     for (let bal of state.vault[addr]) {
                         totalLockedBalance += bal.balance;
                     }
@@ -147,6 +151,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             // Sum all the rest of the balances in the vault object
             for (let addr in state.vault) {
                 let totalLockedBalance = 0;
+                //@ts-expect-error
                 for (let bal of state.vault[addr]) {
                     totalLockedBalance += bal.balance;
                     totalWeight += bal.balance;
@@ -317,7 +322,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             voted: [],
             start: start,
             lockLength: lockLength,
-            voteLength: voteLength
+            voteLength: voteLength,
+            quorum: settings.get('quorum'),
+            support: settings.get('support')
         }
         if (recipient !== '') {
             vote.recipient = recipient;
@@ -546,7 +553,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
             throw new ContractError("Contract has no claims available.");
         }
         // Search for txID inside of `claimable`
-        let obj, index;
+        let obj;
+        let index = -1;
         for (let i = 0; i < state.claimable.length; i++) {
             if (state.claimable[i].txID === txID) {
                 index = i;
@@ -633,9 +641,9 @@ export async function handle(state: StateInterface, action: ActionInterface) {
 
     if (Array.isArray(votes)) {
         //@ts-expect-error
-        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));
+        const concludedVotes = votes.filter(vote => ((block >= vote.start + vote.voteLength || state.ownership === 'single' || vote.yays / vote.totalWeight > vote.support || vote.nays / vote.totalWeight > vote.support || vote.totalWeight === vote.yays + vote.nays) && vote.status === 'active'));
         if (concludedVotes.length > 0) {
-            await finalizeVotes(state, concludedVotes, settings.get('quorum'), settings.get('support'), block);
+            await finalizeVotes(state, concludedVotes, block);
         }
     }
 
@@ -659,6 +667,7 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     if (input.function === 'balance') {
         let vaultBal = 0;
         try {
+            //@ts-expect-error
             for (let bal of state.vault[caller]) {
                 vaultBal += bal.balance;
             }
@@ -681,41 +690,41 @@ function isArweaveAddress(addy: string) {
     return address;
 }
 
-function scanVault(repo, block) {
+function scanVault(repo: StateInterface, block: number) {
     /*** 
      * Scans the vault and unlocks any balances that have passed their required lock time. 
      * When it's time for a balance to be unlocked, the balance is moved from the vault to the balances object.
     */
 
     for (const [key, arr] of Object.entries(repo.vault)) {
-        // @ts-expect-error
         for (let i = 0; i < arr.length; i++) {
-            //@ts-expect-error
             if (arr[i].end <= block) {
                 // Transfer balance
                 if (key in repo.balances) {
-                    //@ts-expect-error
                     repo.balances[key] += arr[i].balance;
                 } else {
-                    //@ts-expect-error
                     repo.balances[key] = arr[i].balance;
                 }
 
                 // Remove object
+                //@ts-expect-error
                 repo.vault[key].splice(i, 1);
                 i--;
             }
             // Clean up empty objects
+            //@ts-expect-error
             if (repo.vault[key].length == 0) {
+                //@ts-expect-error
                 delete repo.vault[key];
             }
         }
     }
 }
 
-async function returnLoanedTokens(repo, block) {
+async function returnLoanedTokens(repo: StateInterface, block: number) {
     // Loaned tokens are locked for the value of the lockLength.  If the lockLength === 0, then the tokens aren't loaned.
     if (Array.isArray(repo.tokens)) {
+        //@ts-expect-error
         const unlockedTokens = repo.tokens.filter((token) => (token.lockLength !== 0 && token.start + token.lockLength <= block));
         for (let token of unlockedTokens) {
             const wdResult = await SmartWeave.contracts.write(token.tokenId, {
@@ -735,7 +744,7 @@ function getStateProperty(key: string) {
     return key;
 }
 
-function getStateValue(repo: StateInterface, key) {
+function getStateValue(repo: StateInterface, key: string) {
     const settings: Map<string, any> = new Map(repo.settings);
     let value = '';
 
@@ -743,6 +752,7 @@ function getStateValue(repo: StateInterface, key) {
         let setting = key.substring(9);
         value = settings.get(setting);
     } else {
+        //@ts-expect-error
         value = repo[key];
     }
     return value;
@@ -766,29 +776,36 @@ function validateProperties(key: string, value: any) {
     return response;
 }
 
-async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
+async function finalizeVotes(repo: StateInterface, concludedVotes: VoteInterface[], block: number) {
     // Loop thru all concluded votes
     for (let vote of concludedVotes) {
         let finalQuorum = 0.0;
         let finalSupport = 0.0;
 
         // If single owned or total support has been met, pass vote (voteLength doesn't matter)
-        if (repo.ownership === 'single' || vote.yays / vote.totalWeight > support) {
+        //@ts-expect-error
+        if (repo.ownership === 'single' || vote.yays / vote.totalWeight > vote.support) {
             vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
             vote.status = 'passed';
             await modifyRepo(repo, vote); 
-        } else if (vote.nays / vote.totalWeight > support) {
+            //@ts-expect-error
+        } else if (vote.nays / vote.totalWeight > vote.support) {
             vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
             vote.status = "failed";
+            //@ts-expect-error
         } else if (block > vote.start + vote.voteLength) {
             // Vote length has expired, so now check quorum and support
+            //@ts-expect-error
             finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-            if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+            //@ts-expect-error
+            if (vote.totalWeight * vote.quorum > vote.yays + vote.nays) {
                 // Must pass quorum
                 vote.status = 'quorumFailed';
                 vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum) + ".";
-            } else if (vote.yays / (vote.yays + vote.nays) > support) {
+                //@ts-expect-error
+            } else if (vote.yays / (vote.yays + vote.nays) > vote.support) {
                 // Must pass support
+                //@ts-expect-error
                 finalSupport = vote.yays / (vote.yays + vote.nays);
                 vote.status = 'passed';
                 vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
@@ -796,67 +813,88 @@ async function finalizeVotes(repo, concludedVotes, quorum, support, block) {
             } else {
               // Vote failed on support
               vote.status = 'failed';
+              //@ts-expect-error
               finalSupport = vote.yays / (vote.yays + vote.nays);
               vote.statusNote = "The proposal failed due to lack of support. The proposal's support was " + String(finalSupport) + ".";
             }
         } else {
             // Vote failed
             vote.status = 'failed';
+            //@ts-expect-error
             finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
+            //@ts-expect-error
             finalSupport = vote.yays / (vote.yays + vote.nays);
             vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
         }
     }
 }
 
-async function modifyRepo(repo, vote) {
+async function modifyRepo(repo: StateInterface, vote: VoteInterface) {
     if (vote.type === 'addBalance' || vote.type === 'addMember') {
+        //@ts-expect-error
         if (vote.recipient in repo.balances) {
             // Wallet already exists in state, add balance
+            //@ts-expect-error
             repo.balances[vote.recipient] += vote.qty;
         } else {
             // Wallet is new
+            //@ts-expect-error
             repo.balances[vote.recipient] = vote.qty;
         }
+        //@ts-expect-error
     } else if (vote.type === 'addLocked') {
         let vaultObj = {
             balance: vote.qty,
             start: vote.start,
+            //@ts-expect-error
             end: vote.start + vote.lockLength
         }
+        //@ts-expect-error
         if (vote.recipient in repo.vault) {
             // Add to existing
+            //@ts-expect-error
             repo.vault[vote.recipient].push(vaultObj);
         } else {
             // Add new
+            //@ts-expect-error
             repo.vault[vote.recipient] = [vaultObj];
         }
+        //@ts-expect-error
     } else if (vote.type === 'subtractBalance') {
+        //@ts-expect-error
         if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
             throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
         }
+        //@ts-expect-error
         repo.balances[vote.recipient] -= vote.qty;
     } else if (vote.type === 'removeMember') {
+        //@ts-expect-error
         if (!isProposedOwnershipValid(repo, vote.type, vote.qty, vote.recipient)) {
             throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
         }
+        //@ts-expect-error
         delete repo.balances[vote.recipient];
     } else if (vote.type === 'set') {
+        //@ts-expect-error
         if (vote.key.substring(0, 9) === 'settings.') {
             // key is a setting
+            //@ts-expect-error
             let key = getStateProperty(vote.key);
             updateSetting(repo, key, vote.value);
         } else {
+            //@ts-expect-error
             if (vote.key === "owner" && !isProposedOwnershipValid(repo, vote.type, vote.qty, vote.value)) {
                 throw new ContractError("The proposed change is not allowed as it would leave the ownership of the repo with no balance thus rendering the repo useless.");
             }
+            //@ts-expect-error
             repo[vote.key] = vote.value;
         }
     } else if (vote.type === 'evolve') {
         repo.evolve = vote.value;
     } else if (vote.type === 'withdrawal') {
         // Find the token object that is to be w/d
-        const tokenObj = repo.tokens.find((token) => (token.txID === vote.txID));
+        //@ts-expect-error
+        const tokenObj: TokenInterface = repo.tokens.find((token) => (token.txID === vote.txID));
         const contractId = tokenObj.tokenId;
         const wdResult = await SmartWeave.contracts.write(contractId, {
             function: "transfer",
@@ -869,11 +907,12 @@ async function modifyRepo(repo, vote) {
         }
 
         // Update tokens object to reflect w/d
+        //@ts-expect-error
         tokenObj.balance -= vote.qty;
     }
 }
 
-function updateSetting(repo, key, value) {
+function updateSetting(repo: StateInterface, key: string, value: any) {
     let found = false;
     for (let setting of repo.settings) {
         if (setting[0] === key) {
@@ -885,6 +924,7 @@ function updateSetting(repo, key, value) {
     }
     if (!found) {
         // Not found, so add new setting
+        //@ts-expect-error
         repo.settings.push([key, value]);
     }
 }

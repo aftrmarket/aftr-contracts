@@ -248,7 +248,9 @@ function handle(state, action) {
         voted: [],
         start,
         lockLength,
-        voteLength
+        voteLength,
+        quorum: settings.get("quorum"),
+        support: settings.get("support")
       };
       if (recipient !== "") {
         vote.recipient = recipient;
@@ -415,7 +417,8 @@ function handle(state, action) {
       if (!state.claimable.length) {
         throw new ContractError("Contract has no claims available.");
       }
-      let obj, index;
+      let obj;
+      let index = -1;
       for (let i = 0; i < state.claimable.length; i++) {
         if (state.claimable[i].txID === txID) {
           index = i;
@@ -466,9 +469,9 @@ function handle(state, action) {
       state = updatedState;
     }
     if (Array.isArray(votes)) {
-      const concludedVotes = votes.filter((vote) => (block >= vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight > settings.get("support") || vote.nays / vote.totalWeight > settings.get("support") || vote.totalWeight === vote.yays + vote.nays) && vote.status === "active");
+      const concludedVotes = votes.filter((vote) => (block >= vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight > vote.support || vote.nays / vote.totalWeight > vote.support || vote.totalWeight === vote.yays + vote.nays) && vote.status === "active");
       if (concludedVotes.length > 0) {
-        yield finalizeVotes(state, concludedVotes, settings.get("quorum"), settings.get("support"), block);
+        yield finalizeVotes(state, concludedVotes, block);
       }
     }
     if (multiIteration <= 1) {
@@ -562,24 +565,24 @@ function validateProperties(key, value) {
   }
   return response;
 }
-function finalizeVotes(repo, concludedVotes, quorum, support, block) {
+function finalizeVotes(repo, concludedVotes, block) {
   return __async(this, null, function* () {
     for (let vote of concludedVotes) {
       let finalQuorum = 0;
       let finalSupport = 0;
-      if (repo.ownership === "single" || vote.yays / vote.totalWeight > support) {
+      if (repo.ownership === "single" || vote.yays / vote.totalWeight > vote.support) {
         vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
         vote.status = "passed";
         yield modifyRepo(repo, vote);
-      } else if (vote.nays / vote.totalWeight > support) {
+      } else if (vote.nays / vote.totalWeight > vote.support) {
         vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
         vote.status = "failed";
       } else if (block > vote.start + vote.voteLength) {
         finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-        if (vote.totalWeight * quorum > vote.yays + vote.nays) {
+        if (vote.totalWeight * vote.quorum > vote.yays + vote.nays) {
           vote.status = "quorumFailed";
           vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum) + ".";
-        } else if (vote.yays / (vote.yays + vote.nays) > support) {
+        } else if (vote.yays / (vote.yays + vote.nays) > vote.support) {
           finalSupport = vote.yays / (vote.yays + vote.nays);
           vote.status = "passed";
           vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";

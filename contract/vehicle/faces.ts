@@ -96,6 +96,8 @@ export interface VoteInterface {
     votingPower?: {
         [addr: string]: number  // Saved snapshot of voting power during a given vote
     };
+    quorum?: number;            // Quorum at the time of the proposal
+    support?: number;           // Support at the time of the proposal
     yays?: number;
     nays?: number;
     voted?: string[];

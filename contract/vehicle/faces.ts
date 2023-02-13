@@ -47,7 +47,7 @@ export interface ActionInterface {
 }
 
 export interface InputInterface {
-    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve' | 'finalize',
+    function: 'balance' | 'lease' | 'propose' | 'vote' | 'transfer' | 'multiInteraction' | 'allow' | 'claim' | 'evolve' | 'finalize' | 'sync',
     type?: string,
     recipient?: string,
     target?: string,

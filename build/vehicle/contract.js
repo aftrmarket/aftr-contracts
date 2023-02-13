@@ -20,7 +20,7 @@ var __async = (__this, __arguments, generator) => {
 };
 
 // contract/vehicle/contract.ts
-var multiLimit = 1e3;
+var multiLimit = 10;
 var multiIteration = 0;
 function handle(state, action) {
   return __async(this, null, function* () {
@@ -146,7 +146,7 @@ function handle(state, action) {
           throw new ContractError("Error in input.  No value exists.");
         }
         const evolveSrcId = isArweaveAddress(input.value);
-        note = "Evolve contract to " + evolveSrcId + ". Verify the new contract source here. https://aftr.market/latest-contract-source";
+        note = "Evolve contract to " + evolveSrcId + ". Make sure you understand the proposed contract changes before voting to evolve.";
       } else if (voteType === "addBalance" || voteType === "subtractBalance" || voteType === "addLocked" || voteType === "addMember" || voteType === "removeMember") {
         if (!input.recipient) {
           throw new ContractError("Error in input.  Recipient not supplied.");
@@ -233,6 +233,14 @@ function handle(state, action) {
         if (tokenObj && tokenObj.balance < qty) {
           throw new ContractError("Not enough " + tokenObj.tokenId + " tokens to withdrawal.");
         }
+      } else if (voteType === "externalInteraction") {
+        if (value == "" || typeof value !== "string") {
+          throw new ContractError("Invalid input value.");
+        }
+        if (!state.tokens || !state.tokens.find((token) => token.tokenId === target2)) {
+          throw new ContractError("Invalid target.");
+        }
+        note = "External Interaction on contract " + target2;
       } else {
         throw new ContractError("Vote Type not supported.");
       }
@@ -469,7 +477,7 @@ function handle(state, action) {
       state = updatedState;
     }
     if (Array.isArray(votes)) {
-      const concludedVotes = votes.filter((vote) => (block >= vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight > vote.support || vote.nays / vote.totalWeight > vote.support || vote.totalWeight === vote.yays + vote.nays) && vote.status === "active");
+      const concludedVotes = votes.filter((vote) => (block > vote.start + vote.voteLength || state.ownership === "single" || vote.yays / vote.totalWeight >= vote.support && (vote.yays + vote.nays) / vote.totalWeight >= vote.quorum || vote.nays / vote.totalWeight > vote.support || vote.totalWeight === vote.yays + vote.nays) && vote.status === "active");
       if (concludedVotes.length > 0) {
         yield finalizeVotes(state, concludedVotes, block);
       }
@@ -568,35 +576,38 @@ function validateProperties(key, value) {
 function finalizeVotes(repo, concludedVotes, block) {
   return __async(this, null, function* () {
     for (let vote of concludedVotes) {
-      let finalQuorum = 0;
-      let finalSupport = 0;
-      if (repo.ownership === "single" || vote.yays / vote.totalWeight > vote.support) {
-        vote.statusNote = repo.ownership === "single" ? "Single owner, no vote required." : "Total Support achieved before vote length timeline.";
+      const quorum = (vote.yays + vote.nays) / vote.totalWeight;
+      const support = vote.yays / vote.totalWeight;
+      const opposition = vote.nays / vote.totalWeight;
+      if (repo.ownership === "single") {
+        vote.statusNote = "Single owner, no vote required.";
         vote.status = "passed";
         yield modifyRepo(repo, vote);
-      } else if (vote.nays / vote.totalWeight > vote.support) {
-        vote.statusNote = "No number of yays can exceed the total number of nays. The proposal fails before the vote length timeline.";
+      } else if (support >= vote.support && quorum >= quorum) {
+        vote.statusNote = "Total Support achieved prior to vote completion.";
+        vote.status = "passed";
+        yield modifyRepo(repo, vote);
+      } else if (opposition > vote.support) {
+        const finalOpposition = String(opposition * 100);
+        vote.statusNote = "Total Opposition of " + finalOpposition + "% achieved prior to vote completion. No number of yays can exceed the total number of nays.";
         vote.status = "failed";
-      } else if (block > vote.start + vote.voteLength) {
-        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-        if (vote.totalWeight * vote.quorum > vote.yays + vote.nays) {
-          vote.status = "quorumFailed";
-          vote.statusNote = "The proposal failed due to the Quorum not being met. The proposal's quorum was " + String(finalQuorum) + ".";
-        } else if (vote.yays / (vote.yays + vote.nays) > vote.support) {
-          finalSupport = vote.yays / (vote.yays + vote.nays);
+      } else if (vote.totalWeight === vote.yays + vote.nays || block > vote.start + vote.voteLength) {
+        const finalSupport = String(support * 100);
+        const finalQuorum = String(quorum * 100);
+        if (support >= vote.support && quorum >= vote.quorum) {
           vote.status = "passed";
-          vote.statusNote = "The proposal passed with " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum.";
+          vote.statusNote = "The proposal passed with " + String(finalSupport) + "% support and a " + String(finalQuorum) + "% quorum.";
           yield modifyRepo(repo, vote);
-        } else {
+        } else if (quorum < vote.quorum) {
+          vote.status = "quorumFailed";
+          vote.statusNote = "The proposal failed to reach quorum. The proposal's quorum was " + String(finalQuorum) + "%.";
+        } else if (support < vote.support) {
           vote.status = "failed";
-          finalSupport = vote.yays / (vote.yays + vote.nays);
-          vote.statusNote = "The proposal failed due to lack of support. The proposal's support was " + String(finalSupport) + ".";
+          vote.statusNote = "The proposal failed due to lack of support. The proposal's support was " + String(finalSupport) + "%.";
         }
       } else {
         vote.status = "failed";
-        finalQuorum = (vote.yays + vote.nays) / vote.totalWeight;
-        finalSupport = vote.yays / (vote.yays + vote.nays);
-        vote.statusNote = "The proposal achieved " + String(finalSupport) + " support of a " + String(finalQuorum) + " quorum which was not enough to pass the proposal.";
+        vote.statusNote = "The proposal result could not be determined.";
       }
     }
   });
@@ -654,6 +665,11 @@ function modifyRepo(repo, vote) {
         throw new ContractError("Unable to withdrawal " + contractId + " for " + vote.target + ".");
       }
       tokenObj.balance -= vote.qty;
+    } else if (vote.type === "externalInteraction") {
+      const eiResult = yield SmartWeave.contracts.write(vote.target, JSON.parse(vote.value));
+      if (eiResult.type !== "ok") {
+        throw new ContractError("Unable to run External Interaction on contract " + vote.target);
+      }
     }
   });
 }

@@ -326,6 +326,10 @@ function handle(state, action) {
       const qty = input.qty;
       const callerAddress = isArweaveAddress(caller);
       const targetAddress = isArweaveAddress(target2);
+      const isTransferable = settings.get("transferable") ? settings.get("transferable") : false;
+      if (!isTransferable) {
+        throw new ContractError("Transferability is turned off for this Repo.");
+      }
       if (!Number.isInteger(qty)) {
         throw new ContractError('Invalid value for "qty". Must be an integer.');
       }

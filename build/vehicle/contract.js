@@ -32,6 +32,10 @@ function handle(state, action) {
     const votes = state.votes;
     let target = "";
     let balance = 0;
+    let functions = state.functions ? state.functions : [];
+    if (!Array.isArray(functions)) {
+      functions = [];
+    }
     const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
     if (typeof input.iteration !== "undefined") {
       if (isNaN(input.iteration)) {
@@ -326,9 +330,8 @@ function handle(state, action) {
       const qty = input.qty;
       const callerAddress = isArweaveAddress(caller);
       const targetAddress = isArweaveAddress(target2);
-      const isTransferable = settings.get("transferable") ? settings.get("transferable") : false;
-      if (!isTransferable) {
-        throw new ContractError("Transferability is turned off for this Repo.");
+      if (!functions.includes("transfer")) {
+        throw new ContractError("The transfer function is not allowed in this repo.");
       }
       if (!Number.isInteger(qty)) {
         throw new ContractError('Invalid value for "qty". Must be an integer.');
@@ -359,6 +362,9 @@ function handle(state, action) {
       }
     }
     if (input.function === "deposit") {
+      if (!functions.includes("deposit")) {
+        throw new ContractError("The deposit function is not allowed in this repo.");
+      }
       if (!input.txID) {
         throw new ContractError("The transaction is not valid.  Tokens were not transferred to the repo.");
       }
@@ -398,6 +404,9 @@ function handle(state, action) {
       state.tokens.push(txObj);
     }
     if (input.function === "allow") {
+      if (!functions.includes("allow")) {
+        throw new ContractError("The allow function is not allowed in this repo.");
+      }
       target = input.target;
       const quantity = input.qty;
       if (!Number.isInteger(quantity) || quantity === void 0) {
@@ -424,6 +433,9 @@ function handle(state, action) {
       });
     }
     if (input.function === "claim") {
+      if (!functions.includes("claim")) {
+        throw new ContractError("The claim function is not allowed in this repo.");
+      }
       const txID = input.txID;
       const qty = input.qty;
       if (!state.claimable.length) {
@@ -459,6 +471,9 @@ function handle(state, action) {
       state.claims.push(txID);
     }
     if (input.function === "multiInteraction") {
+      if (!functions.includes("multiInteraction")) {
+        throw new ContractError("Multiple changes to this repo at once are not allowed.");
+      }
       if (typeof input.actions === "undefined") {
         throw new ContractError("Invalid Multi-interaction input.");
       }

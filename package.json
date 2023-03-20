@@ -1,6 +1,6 @@
 {
   "name": "aftr-contracts",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "AFTR smart contracts for the Arweave ecosystem",
   "main": "index.js",
   "type": "module",
@@ -15,6 +15,7 @@
     "sw-read": "node -r dotenv/config ./tests/sw-read.js",
     "warp-read": "node -r dotenv/config ./tests/warp-read.js",
     "warp-test": "node -r dotenv/config ./tests/warp-test.js",
+    "warp-test-input": "node -r dotenv/config ./tests/warp-test-input.js",
     "evolve-test": "node -r dotenv/config ./tests/evolve-test.js",
     "genkey": "node -r dotenv/config ./tests/genkey.js",
     "test-inc": "node -r dotenv/config ./tests/test-inc.js",
@@ -26,7 +27,8 @@
     "contract-test": "node ./scripts/build.js && node ./build/vehicle/contract-tests.js",
     "tests": "node ./build/vehicle/contract-new-tests.js",
     "jest": "jest --watch --runInBand --detectOpenHandles --testPathPattern=./__tests__/contract.test.ts",
-    "joe-test": "node -r dotenv/config ./tests/joe-test.js"
+    "joe-test": "node -r dotenv/config ./tests/joe-test.js",
+    "hash-test": "node -r dotenv/config ./tests/hash-test.js"
   },
   "author": "",
   "license": "MIT",

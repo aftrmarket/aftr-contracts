@@ -18,6 +18,11 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     let target = '';
     let balance = 0;
 
+    let functions = state.functions ? state.functions : [];
+    if (!Array.isArray(functions)) {
+        functions = [];
+    }
+
     const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
 
     /*** MULTI-INTERACTION */
@@ -502,9 +507,8 @@ export async function handle(state: StateInterface, action: ActionInterface) {
         const callerAddress = isArweaveAddress(caller);
         const targetAddress = isArweaveAddress(target);
 
-        const isTransferable = settings.get("transferable") ? settings.get("transferable") : false;
-        if (!isTransferable) {
-            throw new ContractError("Transferability is turned off for this Repo.");
+        if (!functions.includes("transfer")) {
+            throw new ContractError("The transfer function is not allowed in this repo.");
         }
 
         if (!Number.isInteger(qty)) {
@@ -540,6 +544,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === 'deposit') {
+        if (!functions.includes("deposit")) {
+            throw new ContractError("The deposit function is not allowed in this repo.");
+        }
+
         // Transfer tokens into repo
         if (!input.txID) {
             throw new ContractError("The transaction is not valid.  Tokens were not transferred to the repo.");
@@ -594,6 +602,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     /*** BEGIN CROSS CONTRACT COMMUNICATION SUPPORT */
 
     if (input.function === "allow") {
+        if (!functions.includes("allow")) {
+            throw new ContractError("The allow function is not allowed in this repo.");
+        }
+
         target = input.target;
         const quantity = input.qty;
 
@@ -624,6 +636,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     }
 
     if (input.function === "claim") {
+        if (!functions.includes("claim")) {
+            throw new ContractError("The claim function is not allowed in this repo.");
+        }
+
         // Claim input: txID
         const txID = input.txID;
         // Claim qty
@@ -678,6 +694,10 @@ export async function handle(state: StateInterface, action: ActionInterface) {
          * The function expects an object of proposed changes
          * and will loop through calling the handle function recurrsively.
         */
+
+        if (!functions.includes("multiInteraction")) {
+            throw new ContractError("Multiple changes to this repo at once are not allowed.");
+        }
 
         if (typeof input.actions === 'undefined') {
             throw new ContractError("Invalid Multi-interaction input.");

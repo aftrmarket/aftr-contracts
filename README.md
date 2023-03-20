@@ -26,10 +26,24 @@ The AFTR state follows common practices established by early SmartWeave contract
     ],
     claimable: ClaimableInterface[],                // Required for Internal Writes
     claims: string[],                               // Required for Internal Writes
+    functions?: Array<'transfer' | 'deposit' | 'allow' | 'claim' | 'multiInteraction'> | [],
     evolve?: string,
     settings: Map<string, any>
 }
 ```
+## Function Privileges
+
+There are several functions that can be turned off in a repo contract.  For these functions to be enabled, they must be listed in the state.functions array.  Valid values for the **functions** array include the following:
+```typescript
+["transfer", "deposit", "allow", "claim", "multiInteraction"] | []
+```
+
+- **Transfer** - Gives the repo the ability to transfer membership balances.
+- **Deposit** - Allows anyone to deposit supported Arweave assets into the repo.
+- **Allow** - Required for tradability protocols such as Verto Flex.
+- **Claim** - Required for tradability protocols such as Verto Flex.
+- **Multi-Interactions** - Gives the repo the ability to perform more than one change at a time.
+
 ## Settings
 AFTR repos use the standard settings in SmartWeave contracts. Here are some of the standard ones:
 

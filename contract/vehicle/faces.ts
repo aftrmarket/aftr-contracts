@@ -31,6 +31,7 @@ export interface StateInterface {
     claimable: ClaimableInterface[],                // Required for supporting Internal Writes
     claims: string[],                               // Required for supporting Internal Writes
     evolve?: string,
+    functions?: Array<'transfer' | 'deposit' | 'allow' | 'claim' | 'multiInteraction'> | [],
     settings: Map<string, any>
 }
 

@@ -18,9 +18,15 @@ export async function handle(state: StateInterface, action: ActionInterface) {
     let target = '';
     let balance = 0;
 
-    let functions = state.functions ? state.functions : [];
+    /*** 
+     * Default repo to full functionality if functions object is not in state.
+     * This allows contract to be backwards compatible with older states that don't include the functions object.
+     * Otherwise, the states created with older contract versions, wouldn't have full functionality even though
+     * the ability to prevent functions from running wasn't a feature back then.
+     * */
+    let functions = state.functions ? state.functions : ["transfer", "deposit", "allow", "claim", "multiInteraction"];
     if (!Array.isArray(functions)) {
-        functions = [];
+        functions = ["transfer", "deposit", "allow", "claim", "multiInteraction"];
     }
 
     const votingSystem = state.votingSystem ? state.votingSystem : "weighted";

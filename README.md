@@ -44,6 +44,8 @@ There are several functions that can be turned off in a repo contract.  For thes
 - **Claim** - Required for tradability protocols such as Verto Flex.
 - **Multi-Interactions** - Gives the repo the ability to perform more than one change at a time.
 
+Note that if the functions parameter is undefined or not an array on the state, then the contract defaults to allow all privileges to ensure backwards compatibility with older states.
+
 ## Settings
 AFTR repos use the standard settings in SmartWeave contracts. Here are some of the standard ones:
 

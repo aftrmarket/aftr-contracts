@@ -32,9 +32,9 @@ function handle(state, action) {
     const votes = state.votes;
     let target = "";
     let balance = 0;
-    let functions = state.functions ? state.functions : [];
+    let functions = state.functions ? state.functions : ["transfer", "deposit", "allow", "claim", "multiInteraction"];
     if (!Array.isArray(functions)) {
-      functions = [];
+      functions = ["transfer", "deposit", "allow", "claim", "multiInteraction"];
     }
     const votingSystem = state.votingSystem ? state.votingSystem : "weighted";
     if (typeof input.iteration !== "undefined") {

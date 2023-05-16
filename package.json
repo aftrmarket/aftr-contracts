@@ -28,7 +28,8 @@
     "tests": "node ./build/vehicle/contract-new-tests.js",
     "jest": "jest --watch --runInBand --detectOpenHandles --testPathPattern=./__tests__/contract.test.ts",
     "joe-test": "node -r dotenv/config ./tests/joe-test.js",
-    "hash-test": "node -r dotenv/config ./tests/hash-test.js"
+    "hash-test": "node -r dotenv/config ./tests/hash-test.js",
+    "createNewSource": "node -r dotenv/config ./tests/createNewSource.js"
   },
   "author": "",
   "license": "MIT",
@@ -43,7 +44,8 @@
     "if-env": "^1.0.4",
     "smartweave": "^0.4.49",
     "verto-cache-interface": "^1.2.4",
-    "warp-contracts": "^1.2.32"
+    "warp-contracts": "^1.2.56",
+    "warp-contracts-plugin-deploy": "^1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.19.6",

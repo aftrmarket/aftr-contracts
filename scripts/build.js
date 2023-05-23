@@ -12,6 +12,8 @@ import fs from "fs";
   await build({
     entryPoints: contractEntries.map((entry) => `./contract/${entry}`),
     outdir: "./build/vehicle",
+    platform: "node",
+    target: "es2017",
     format: "esm",
     bundle: true,
   });
